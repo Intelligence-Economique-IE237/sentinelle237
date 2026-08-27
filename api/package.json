@@ -1,0 +1,50 @@
+{
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.9.0",
+    "@prisma/client": "^7.9.0",
+    "bcrypt": "^6.0.0",
+    "bullmq": "^6.1.2",
+    "cheerio": "^1.2.0",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.6.0",
+    "ioredis": "^6.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.2.0",
+    "node-cron": "^4.6.0",
+    "nodemailer": "^9.0.3",
+    "onnxruntime-node": "^1.27.0",
+    "otplib": "^13.4.1",
+    "pdf-lib": "^1.17.1",
+    "pg": "^8.22.0",
+    "qrcode": "^1.5.4",
+    "rss-parser": "^3.13.0",
+    "cors": "^2.8.5",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.2.0",
+    "@types/node": "^26.1.1",
+    "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^8.0.1",
+    "@types/pg": "^8.20.0",
+    "@types/qrcode": "^1.5.6",
+    "@types/cors": "^2.8.17",
+    "nodemon": "^3.1.14",
+    "prisma": "^7.9.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "scripts": {
+    "dev": "nodemon --exec ts-node src/app.ts",
+    "postinstall": "prisma generate",
+    "build": "tsc",
+    "start": "node dist/app.js",
+    "seed": "prisma db seed"
+  }
+}

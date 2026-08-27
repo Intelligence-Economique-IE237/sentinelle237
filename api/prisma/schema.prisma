@@ -1,0 +1,366 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  veilleur
+  admin
+}
+
+enum Offre {
+  community
+  entreprise
+}
+
+model User {
+  id_user                         String    @id @default(uuid())
+  pseudo                          String    @unique
+  mail                            String    @unique
+  password                        String
+  role                            Role      @default(veilleur)
+  pays                            String
+  ville                           String
+  verified                        Boolean   @default(false)
+  activated                       Boolean   @default(true)
+  token_verification              String?
+  token_expiration                DateTime?
+  totp_secret                     String?
+  totp_enabled                    Boolean   @default(false)
+  token_reset_password            String?
+  token_reset_password_expiration DateTime?
+  offre                           Offre     @default(community)
+
+  totpRecoveryCodes   TotpRecoveryCode[]
+  fluxCrees           Flux[]               @relation("FluxCreator")
+  fluxAbonnes         UserFlux[]
+  alertes             Alerte[]
+  dossiers            Dossier[]
+  articleInteractions ArticleInteraction[]
+  modelesPdf          ModelePdf[]
+  revuesDePresse      RevueDePresse[]
+  fluxEpingles        FluxEpingle[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model TotpRecoveryCode {
+  id_code   String   @id @default(uuid())
+  user_id   String
+  user      User     @relation(fields: [user_id], references: [id_user], onDelete: Cascade)
+  code_hash String
+  utilise   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("totp_recovery_codes")
+}
+
+enum FluxType {
+  rss
+  x
+  youtube
+  telegram
+}
+
+enum Zone {
+  afrique
+  europe
+  amerique
+  asie
+  oceanie
+  international
+}
+
+model CategorieFlux {
+  id_categorie String   @id @default(uuid())
+  code         String   @unique
+  libelle      String
+  couleur      String
+  description  String?
+  flux         Flux[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("categories_flux")
+}
+
+model Flux {
+  id_flux         String         @id @default(uuid())
+  nom             String
+  url_site        String?
+  lien_rss        String         @unique
+  logo            String?
+  type            FluxType       @default(rss)
+  zone            Zone?
+  categorie_id    String?
+  categorie       CategorieFlux? @relation(fields: [categorie_id], references: [id_categorie])
+  is_suggestion   Boolean        @default(false)
+  last_crawled_at DateTime?
+  created_by      String?
+  createdByUser   User?          @relation("FluxCreator", fields: [created_by], references: [id_user])
+  subscribers     UserFlux[]
+  articles        Article[]
+  dossiers        DossierFlux[]
+  epingles        FluxEpingle[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("flux")
+}
+
+model UserFlux {
+  id_user_flux String   @id @default(uuid())
+  user_id      String
+  flux_id      String
+  user         User     @relation(fields: [user_id], references: [id_user], onDelete: Cascade)
+  flux         Flux     @relation(fields: [flux_id], references: [id_flux], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@unique([user_id, flux_id])
+  @@map("user_flux")
+}
+
+model FluxEpingle {
+  id_epingle String   @id @default(uuid())
+  user_id    String
+  flux_id    String
+  user       User     @relation(fields: [user_id], references: [id_user], onDelete: Cascade)
+  flux       Flux     @relation(fields: [flux_id], references: [id_flux], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([user_id, flux_id])
+  @@map("flux_epingles")
+}
+
+enum CategorieArticle {
+  politique
+  economie
+  societe
+  securite
+  sport
+  sante
+  technologie
+  environnement
+  culture
+  international
+}
+
+model ArticleInteraction {
+  id_interaction String   @id @default(uuid())
+  user_id        String
+  article_id     String
+  user           User     @relation(fields: [user_id], references: [id_user], onDelete: Cascade)
+  article        Article  @relation(fields: [article_id], references: [id_article], onDelete: Cascade)
+  note           String?
+  favori         Boolean  @default(false)
+  lu             Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([user_id, article_id])
+  @@map("article_interactions")
+}
+
+model Article {
+  id_article       String               @id @default(uuid())
+  flux_id          String
+  flux             Flux                 @relation(fields: [flux_id], references: [id_flux], onDelete: Cascade)
+  titre            String
+  lien             String
+  description      String?
+  image            String?
+  auteur           String?
+  date_publication DateTime?
+  categorie        CategorieArticle?
+  resume           String?
+  interactions     ArticleInteraction[]
+  createdAt        DateTime             @default(now())
+
+  @@unique([flux_id, lien])
+  @@map("articles")
+}
+
+model FeedbackClassification {
+  id_feedback               String           @id @default(uuid())
+  texte                     String
+  categorie                 CategorieArticle
+  utilise_pour_entrainement Boolean          @default(false)
+  createdAt                 DateTime         @default(now())
+
+  @@map("feedback_classification")
+}
+
+enum AlerteSource {
+  flux
+  web
+}
+
+enum AlerteFrequence {
+  immediat
+  quotidien
+  hebdomadaire
+}
+
+enum AlerteLangue {
+  toutes
+  fr
+  en
+  es
+  zh
+  hi
+  ar
+  pt
+  ru
+  ja
+  de
+}
+
+enum AlerteNombreResultats {
+  meilleurs
+  tous
+}
+
+model Alerte {
+  id_alerte              String                @id @default(uuid())
+  user_id                String
+  user                   User                  @relation(fields: [user_id], references: [id_user], onDelete: Cascade)
+  mot_cle                String
+  actif                  Boolean               @default(true)
+  frequence              AlerteFrequence       @default(immediat)
+  langue                 AlerteLangue          @default(toutes)
+  pays                   String?
+  nombre_resultats       AlerteNombreResultats @default(meilleurs)
+  envoye_a               String
+  derniere_recherche_web DateTime?
+  dernier_envoi          DateTime?
+  resultats              AlerteResultat[]
+  dossiers               DossierAlerte[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([user_id, mot_cle])
+  @@map("alertes")
+}
+
+model AlerteResultat {
+  id_resultat      String       @id @default(uuid())
+  alerte_id        String
+  alerte           Alerte       @relation(fields: [alerte_id], references: [id_alerte], onDelete: Cascade)
+  source           AlerteSource
+  titre            String
+  lien             String
+  description      String?
+  image            String?
+  date_publication DateTime?
+  lu               Boolean      @default(false)
+  envoye           Boolean      @default(false)
+  createdAt        DateTime     @default(now())
+
+  @@unique([alerte_id, lien])
+  @@map("alerte_resultats")
+}
+
+model ApiQuota {
+  id       String @id @default(uuid())
+  cle      String @unique
+  date     String
+  compteur Int    @default(0)
+
+  @@map("api_quota")
+}
+
+model Dossier {
+  id_dossier  String          @id @default(uuid())
+  nom         String
+  description String?
+  user_id     String
+  user        User            @relation(fields: [user_id], references: [id_user], onDelete: Cascade)
+  alertes     DossierAlerte[]
+  flux        DossierFlux[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([user_id, nom])
+  @@map("dossiers")
+}
+
+model DossierAlerte {
+  id_dossier_alerte String   @id @default(uuid())
+  dossier_id        String
+  alerte_id         String
+  dossier           Dossier  @relation(fields: [dossier_id], references: [id_dossier], onDelete: Cascade)
+  alerte            Alerte   @relation(fields: [alerte_id], references: [id_alerte], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+
+  @@unique([dossier_id, alerte_id])
+  @@map("dossier_alertes")
+}
+
+model DossierFlux {
+  id_dossier_flux String   @id @default(uuid())
+  dossier_id      String
+  flux_id         String
+  dossier         Dossier  @relation(fields: [dossier_id], references: [id_dossier], onDelete: Cascade)
+  flux            Flux     @relation(fields: [flux_id], references: [id_flux], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@unique([dossier_id, flux_id])
+  @@map("dossier_flux")
+}
+
+model CoursMatierePremiere {
+  id_cours      String   @id @default(uuid())
+  matiere       String
+  prix          Float
+  devise        String   @default("USD")
+  variation_24h Float?
+  recorded_at   DateTime @default(now())
+
+  @@index([matiere, recorded_at])
+  @@map("cours_matieres_premieres")
+}
+
+model CoursDevise {
+  id_cours      String   @id @default(uuid())
+  paire         String
+  taux          Float
+  variation_24h Float?
+  recorded_at   DateTime @default(now())
+
+  @@index([paire, recorded_at])
+  @@map("cours_devises")
+}
+
+model ModelePdf {
+  id_modele      String          @id @default(uuid())
+  user_id        String
+  user           User            @relation(fields: [user_id], references: [id_user], onDelete: Cascade)
+  nom            String
+  chemin_fichier String
+  createdAt      DateTime        @default(now())
+  revues         RevueDePresse[]
+
+  @@map("modeles_pdf")
+}
+
+model RevueDePresse {
+  id_revue       String    @id @default(uuid())
+  user_id        String
+  user           User      @relation(fields: [user_id], references: [id_user], onDelete: Cascade)
+  modele_id      String
+  modele         ModelePdf @relation(fields: [modele_id], references: [id_modele])
+  dossier_id     String?
+  titre          String
+  chemin_fichier String
+  createdAt      DateTime  @default(now())
+
+  @@map("revues_de_presse")
+}
