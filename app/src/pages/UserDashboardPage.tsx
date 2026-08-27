@@ -1,16 +1,11 @@
-// src/pages/CommandCenterPage.tsx
 import { useEffect, useMemo, useState } from "react"
 import type React from "react"
 import { useNavigate } from "react-router-dom"
 import {
   AlertTriangle,
-  ArrowLeft,
-  Bell,
   FolderSearch,
   Newspaper,
   PieChart as PieChartIcon,
-  Rss,
-  Search,
 } from "lucide-react"
 import {
   Cell,
@@ -29,7 +24,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { AppSidebar, type SelectedView } from "@/components/app-sidebar"
-import { useAuth } from "@/context/AuthContext"
 import { useCachedFetch } from "@/hooks/useCachedFetch"
 import { getAlertes, getAlerteResultats } from "@/lib/api/alerts"
 import { getFavoris, getAnnotes } from "@/lib/api/articles"
@@ -69,7 +63,6 @@ function KpiBlock({ value, label, loading }: { value: number; label: string; loa
 const PIE_COLORS = ["#8b5cf6", "#ec4899", "#14b8a6", "#eab308", "#6366f1", "#f97316"]
 
 export default function CommandCenterPage() {
-  const { user } = useAuth()
   const navigate = useNavigate()
 
   // --- Sidebar : cette page n'a pas de vues internes distinctes — toute
@@ -122,7 +115,7 @@ export default function CommandCenterPage() {
               feeds.map((f) =>
                   getFluxArticles(f.id_flux, { limit: 50 }).then((arts) =>
                       arts.map((a) => ({
-                        id: a.id_article,
+                        id: a.id,
                         titre: a.titre,
                         feedName: f.nom,
                         publishedAt: a.date_publication,
@@ -149,8 +142,8 @@ export default function CommandCenterPage() {
   const [annotesTotal, setAnnotesTotal] = useState<number | null>(null)
 
   useEffect(() => {
-    getFavoris({ page: 1, limit: 1 }).then((res) => setFavorisTotal(res.total)).catch(() => {})
-    getAnnotes({ page: 1, limit: 1 }).then((res) => setAnnotesTotal(res.total)).catch(() => {})
+    getFavoris({ page: 1, limit: 1 }).then((res) => setFavorisTotal(res.pagination.total)).catch(() => {})
+    getAnnotes({ page: 1, limit: 1 }).then((res) => setAnnotesTotal(res.pagination.total)).catch(() => {})
   }, [])
 
   // --- Résultats d'alertes non lus (les 3 premières alertes, échantillon) ---
@@ -204,8 +197,7 @@ export default function CommandCenterPage() {
     return Object.entries(counts).map(([name, value]) => ({ name, value }))
   }, [feeds, categoriesById])
 
-  const unreadTodayCount = todayArticles.length // TODO: état "lu" pas persisté — approximation sur la session
-  const kpisLoading = feedsLoading || alertesLoading || dossiersLoading
+  const unreadTodayCount = todayArticles.length
 
   const sidebarCounts = useMemo(
       () => ({

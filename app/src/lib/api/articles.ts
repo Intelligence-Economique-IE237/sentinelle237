@@ -1,5 +1,12 @@
 import { apiClient } from "./client"
-import type { ArticleDetail, ArticleFavori, PaginatedResponse, ArticleAnnote } from "./types"
+import type { ArticleDetail, ArticleFavori, PaginatedResponse, ArticleAnnote, Pagination } from "./types"
+
+const DEFAULT_PAGINATION = (page?: number, limit?: number, count = 0): Pagination => ({
+  total: count,
+  page: page ?? 1,
+  limit: limit ?? count,
+  totalPages: 1,
+})
 
 export async function getFavoris(params?: {
   page?: number
@@ -8,12 +15,8 @@ export async function getFavoris(params?: {
   const { data } = await apiClient.get<unknown>("/articles/favoris", { params })
   const obj = data as Record<string, unknown>
   const list = Array.isArray(obj?.articles) ? (obj.articles as ArticleFavori[]) : []
-  const pagination = (obj?.pagination as PaginatedResponse<never>["pagination"]) ?? {
-    total: list.length,
-    page: params?.page ?? 1,
-    limit: params?.limit ?? list.length,
-  }
-  return { data: list, ...pagination }
+  const pagination = (obj?.pagination as Pagination) ?? DEFAULT_PAGINATION(params?.page, params?.limit, list.length)
+  return { data: list, pagination }
 }
 
 export async function getArticleDetail(id: string): Promise<ArticleDetail> {
@@ -36,10 +39,6 @@ export async function getAnnotes(params?: {
   const { data } = await apiClient.get<unknown>("/articles/annotes", { params })
   const obj = data as Record<string, unknown>
   const list = Array.isArray(obj?.articles) ? (obj.articles as ArticleAnnote[]) : []
-  const pagination = (obj?.pagination as PaginatedResponse<never>["pagination"]) ?? {
-    total: list.length,
-    page: params?.page ?? 1,
-    limit: params?.limit ?? list.length,
-  }
-  return { data: list, ...pagination }
+  const pagination = (obj?.pagination as Pagination) ?? DEFAULT_PAGINATION(params?.page, params?.limit, list.length)
+  return { data: list, pagination }
 }

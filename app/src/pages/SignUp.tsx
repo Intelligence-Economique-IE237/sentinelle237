@@ -9,9 +9,7 @@ import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -145,8 +143,8 @@ export default function SignUp() {
             <div className="space-y-2">
               <Label htmlFor="country">Pays</Label>
               <Select
-                value={values.pays}
-                onValueChange={(v) => updateField("pays", v)}
+                  value={values.pays}
+                  onValueChange={(v) => updateField("pays", v ?? "")}
               >
                 <SelectTrigger id="country" className="w-full">
                   <SelectValue placeholder="Sélectionne ton pays" />

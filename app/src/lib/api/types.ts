@@ -6,6 +6,9 @@ export interface User {
   verified: boolean
   role: string
   offre: string
+  pays?: string
+  ville?: string
+  totp_enabled: boolean
 }
 
 export interface RegisterPayload {
@@ -25,12 +28,16 @@ export interface MessageResponse {
   message: string
 }
 
-// --- Générique ---
-export interface PaginatedResponse<T> {
-  data: T[]
+export interface Pagination {
   total: number
   page: number
   limit: number
+  totalPages: number
+}
+
+export interface PaginatedResponse<T> {
+  data: T[]
+  pagination: Pagination
 }
 
 // --- Flux ---
@@ -66,7 +73,7 @@ export interface AddFluxPayload {
 
 export interface AddFluxResponse {
   flux: Flux
-  articles: unknown[] // TODO: typer une fois la forme des articles confirmée
+  articles: unknown[]
   total: number
   alreadyExisted: boolean
 }
@@ -182,6 +189,7 @@ export interface CategorieFlux {
   code: string
   libelle: string
   couleur: string
+  description: string | null
 }
 
 export interface ArticleFavori {
@@ -201,18 +209,6 @@ export interface ArticleDetail {
   resume: string
   note: string | null
   favori: boolean
-}
-
-// TODO: la vraie forme d'un article de GET /flux/:id/articles n'a jamais été
-// confirmée avec des données non vides — je pars sur id_article par cohérence
-// avec id_flux/id_alerte/id_dossier partout ailleurs dans ce backend. À vérifier.
-export interface FluxArticle {
-  id_article: string
-  titre: string
-  lien: string
-  description: string
-  image: string | null
-  date_publication: string
 }
 
 export interface ArticleAnnote {
@@ -268,18 +264,6 @@ export interface GenererRevuePayload {
   titre: string
   dossier_id?: string
   flux_ids?: string[]
-}
-
-export interface User {
-  id_user: string
-  pseudo: string
-  mail: string
-  verified: boolean
-  role: string
-  offre: string
-  pays?: string
-  ville?: string
-  totp_enabled: boolean
 }
 
 export interface UpdateMePayload {

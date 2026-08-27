@@ -2,9 +2,17 @@ import { apiClient } from "./client"
 import type {
   AdminUpdateUserPayload,
   PaginatedResponse,
+  Pagination,
   UpdateMePayload,
   User,
 } from "./types"
+
+const DEFAULT_PAGINATION = (page?: number, limit?: number, count = 0): Pagination => ({
+  total: count,
+  page: page ?? 1,
+  limit: limit ?? count,
+  totalPages: 1,
+})
 
 function unwrapUser(data: unknown): User {
   const obj = data as Record<string, unknown>
@@ -25,7 +33,6 @@ export async function deleteMe(): Promise<void> {
   await apiClient.delete("/users/me")
 }
 
-// --- Admin ---
 export async function getUsers(params?: {
   page?: number
   limit?: number
@@ -38,12 +45,8 @@ export async function getUsers(params?: {
   const { data } = await apiClient.get<unknown>("/users", { params })
   const obj = data as Record<string, unknown>
   const list = Array.isArray(obj?.users) ? (obj.users as User[]) : []
-  const pagination = (obj?.pagination as PaginatedResponse<never>["pagination"]) ?? {
-    total: list.length,
-    page: params?.page ?? 1,
-    limit: params?.limit ?? list.length,
-  }
-  return { data: list, ...pagination }
+  const pagination = (obj?.pagination as Pagination) ?? DEFAULT_PAGINATION(params?.page, params?.limit, list.length)
+  return { data: list, pagination }
 }
 
 export async function getUser(id: string): Promise<User> {

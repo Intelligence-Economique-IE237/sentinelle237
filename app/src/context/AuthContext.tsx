@@ -23,9 +23,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [user, setUser] = useState<User | null>(null)
 
+  // @ts-ignore
   useEffect(() => {
     const unsubscribe = subscribeToToken(setToken)
-    return unsubscribe
+    return () => unsubscribe()
   }, [])
 
   useEffect(() => {

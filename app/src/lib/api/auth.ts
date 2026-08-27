@@ -1,6 +1,5 @@
 import { apiClient } from "./client"
 import { setAccessToken } from "./tokenStore"
-import type { SignUpFormValues } from "@/utils/validators"
 import type {
   RegisterPayload,
   RegisterResponse,

@@ -3,7 +3,7 @@ import type {
   Alerte,
   AlerteResultat,
   CreateAlertePayload,
-  PaginatedResponse,
+  PaginatedResponse, Pagination,
   UpdateAlertePayload,
 } from "./types"
 
@@ -63,9 +63,12 @@ export async function getAlerteResultats(
 
   return {
     data: list,
-    total: (obj?.total as number) ?? list.length,
-    page: (obj?.page as number) ?? params?.page ?? 1,
-    limit: (obj?.limit as number) ?? params?.limit ?? list.length,
+    pagination: (obj?.pagination as Pagination) ?? {
+      total: list.length,
+      page: params?.page ?? 1,
+      limit: params?.limit ?? list.length,
+      totalPages: 1,
+    },
   }
 }
 

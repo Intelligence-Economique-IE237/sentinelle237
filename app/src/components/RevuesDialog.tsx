@@ -174,61 +174,61 @@ async function handleGenerate(e: React.FormEvent) {
 
               <div className="space-y-2">
                 <Label htmlFor="modele">Modèle</Label>
-                <Select value={modeleId} onValueChange={(v) => setModeleId(v)}>
+                <Select value={modeleId} onValueChange={(v) => setModeleId(v ?? "")}>
                   <SelectTrigger id="modele" className="w-full">
                     <SelectValue placeholder={templatesLoading ? "Chargement..." : "Choisis un modèle"} />
                   </SelectTrigger>
                   <SelectContent>
                     {templates.map((t) => (
-                      <SelectItem key={t.id_modele} value={t.id_modele}>
-                        {t.nom}
-                      </SelectItem>
+                        <SelectItem key={t.id_modele} value={t.id_modele}>
+                          {t.nom}
+                        </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 {templates.length === 0 && !templatesLoading && (
-                  <p className="text-xs text-muted-foreground">
-                    Aucun modèle — importe-en un dans l'onglet "Modèles"
-                  </p>
+                    <p className="text-xs text-muted-foreground">
+                      Aucun modèle — importe-en un dans l'onglet "Modèles"
+                    </p>
                 )}
               </div>
 
               <div className="space-y-2">
                 <Label>Source des articles</Label>
                 <div className="grid grid-cols-2 gap-2">
-                    <Button
-                    type="button"
-                    variant={sourceType === "dossier" ? "default" : "outline"}
-                    onClick={() => setSourceType("dossier")}
-                    >
+                  <Button
+                      type="button"
+                      variant={sourceType === "dossier" ? "default" : "outline"}
+                      onClick={() => setSourceType("dossier")}
+                  >
                     Un dossier
-                    </Button>
-                    <Button
-                    type="button"
-                    variant={sourceType === "flux" ? "default" : "outline"}
-                    onClick={() => setSourceType("flux")}
-                    >
+                  </Button>
+                  <Button
+                      type="button"
+                      variant={sourceType === "flux" ? "default" : "outline"}
+                      onClick={() => setSourceType("flux")}
+                  >
                     Des flux
-                    </Button>
+                  </Button>
                 </div>
 
                 {sourceType === "dossier" && (
                     <div className="pt-2">
-                    <Select value={dossierId} onValueChange={(v) => setDossierId(v)}>
+                      <Select value={dossierId} onValueChange={(v) => setDossierId(v ?? "")}>
                         <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Choisis un dossier" />
+                          <SelectValue placeholder="Choisis un dossier" />
                         </SelectTrigger>
                         <SelectContent>
-                        {dossiers.map((d) => (
-                            <SelectItem key={d.id_dossier} value={d.id_dossier}>
-                            {d.nom}
-                            </SelectItem>
-                        ))}
+                          {dossiers.map((d) => (
+                              <SelectItem key={d.id_dossier} value={d.id_dossier}>
+                                {d.nom}
+                              </SelectItem>
+                          ))}
                         </SelectContent>
-                    </Select>
-                    {dossiers.length === 0 && (
-                        <p className="mt-1 text-xs text-muted-foreground">Aucun dossier pour l'instant</p>
-                    )}
+                      </Select>
+                      {dossiers.length === 0 && (
+                          <p className="mt-1 text-xs text-muted-foreground">Aucun dossier pour l'instant</p>
+                      )}
                     </div>
                 )}
 

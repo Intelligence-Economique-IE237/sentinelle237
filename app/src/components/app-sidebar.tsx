@@ -683,7 +683,7 @@ export function AppSidebar({ selected, onSelect, counts }: AppSidebarProps) {
 
                 <div className="space-y-2">
                   <Label htmlFor="category">Catégorie (optionnel)</Label>
-                  <Select value={form.categorie} onValueChange={(v) => updateForm("categorie", v)}>
+                  <Select value={form.categorie} onValueChange={(v) => updateForm("categorie", v ?? "")}>
                     <SelectTrigger id="category" className="w-full">
                       <SelectValue placeholder="Sélectionne une catégorie" />
                     </SelectTrigger>

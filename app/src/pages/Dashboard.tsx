@@ -11,7 +11,6 @@ import {
   Eye,
   EyeOff,
   ExternalLink,
-  FileText,
   Flame,
   FolderPlus,
   FolderSearch,
@@ -64,7 +63,6 @@ import { getFluxArticles, getMyFluxes } from "@/lib/api/feeds"
 import type {
   Alerte,
   AlerteResultat,
-  ArticleAnnote,
   ArticleFavori,
   Flux,
   FluxArticle,
@@ -143,6 +141,11 @@ const SECTION_META: Record<SelectedView["type"], SectionMetaEntry> = {
     title: "Marches",
     description: "Cours des devises et matieres premieres",
   },
+  dashboard: {
+    icon: LineChart,
+    title: "Tableau de bord",
+    description: "Vue d'ensemble",
+  },
   feed: {
     icon: Rss,
     title: "",
@@ -152,7 +155,7 @@ const SECTION_META: Record<SelectedView["type"], SectionMetaEntry> = {
 
 function toDisplay(a: FluxArticle, feedId: string, feedName: string): DisplayArticle {
   return {
-    id: a.id_article,
+    id: a.id,
     feedId,
     feedName,
     title: a.titre,
@@ -380,7 +383,7 @@ export default function Dashboard() {
   }, [openArticle])
 
   // --- Flux suivis, mis en cache (2 min) ---
-  const { data: feedsData, refresh: refreshFeeds } = useCachedFetch<Flux[]>(
+  const { data: feedsData } = useCachedFetch<Flux[]>(
     "feeds",
     getMyFluxes,
     2 * 60 * 1000,
@@ -475,8 +478,8 @@ export default function Dashboard() {
       while (true) {
         const res = await getFavoris({ page, limit })
         all = all.concat(res.data)
-        total = res.total
-        if (all.length >= res.total || res.data.length === 0) break
+        total = res.pagination.total // ← corrigé
+        if (all.length >= res.pagination.total || res.data.length === 0) break // ← corrigé
         page++
       }
       setFavoriIds(new Set(all.map((a) => a.id_article)))
@@ -504,8 +507,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     getAnnotes({ page: 1, limit: 1 })
-      .then((res) => setAnnotesTotal(res.total))
-      .catch(() => {})
+        .then((res) => setAnnotesTotal(res.pagination.total)) // ← corrigé
+        .catch(() => {})
   }, [])
 
   const annotesAsDisplay: DisplayArticle[] = useMemo(
@@ -1323,7 +1326,7 @@ export default function Dashboard() {
         open={linkDialogOpen}
         onOpenChange={setLinkDialogOpen}
         availableAlertes={alertes}
-        availableFeeds={feeds.map((f) => ({ id: f.id_flux, name: f.nom, category: "", articleCount: 0 }))}
+        availableFeeds={feeds}
         linkedAlerteIds={linkedAlerteIds}
         linkedFluxIds={linkedFluxIds}
         onLinkAlerte={handleLinkAlerte}

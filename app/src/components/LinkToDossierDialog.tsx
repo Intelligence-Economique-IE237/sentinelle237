@@ -8,14 +8,13 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import type { Alerte } from "@/lib/api/types"
-import type { Feed } from "@/components/app-sidebar"
+import type { Alerte, Flux } from "@/lib/api/types"
 
 interface LinkToDossierDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   availableAlertes: Alerte[]
-  availableFeeds: Feed[]
+  availableFeeds: Flux[]
   linkedAlerteIds: Set<string>
   linkedFluxIds: Set<string>
   onLinkAlerte: (alerteId: string) => Promise<void> | void
@@ -115,19 +114,19 @@ export function LinkToDossierDialog({
               </p>
             )}
             {availableFeeds.map((f) => {
-              const isLinked = linkedFluxIds.has(f.id)
+              const isLinked = linkedFluxIds.has(f.id_flux)
               return (
-                <div key={f.id} className="flex items-center justify-between rounded-md border p-2">
-                  <span className="text-sm">{f.name}</span>
-                  <Button
-                    size="sm"
-                    variant={isLinked ? "destructive" : "outline"}
-                    disabled={pendingId === f.id}
-                    onClick={() => handleFluxClick(f.id)}
-                  >
-                    {isLinked ? "Délier" : "Lier"}
-                  </Button>
-                </div>
+                  <div key={f.id_flux} className="flex items-center justify-between rounded-md border p-2">
+                    <span className="text-sm">{f.nom}</span>
+                    <Button
+                        size="sm"
+                        variant={isLinked ? "destructive" : "outline"}
+                        disabled={pendingId === f.id_flux}
+                        onClick={() => handleFluxClick(f.id_flux)}
+                    >
+                      {isLinked ? "Délier" : "Lier"}
+                    </Button>
+                  </div>
               )
             })}
           </TabsContent>
