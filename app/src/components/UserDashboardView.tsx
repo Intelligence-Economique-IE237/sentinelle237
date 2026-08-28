@@ -15,15 +15,11 @@ import {
   Tooltip,
 } from "recharts"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
 import {
   SidebarInset,
   SidebarProvider,
-  SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { AppSidebar, type SelectedView } from "@/components/app-sidebar"
 import { useCachedFetch } from "@/hooks/useCachedFetch"
 import { getAlertes, getAlerteResultats } from "@/lib/api/alerts"
 import { getFavoris, getAnnotes } from "@/lib/api/articles"
@@ -60,7 +56,6 @@ function KpiBlock({ value, label, loading }: { value: number; label: string; loa
   )
 }
 
-const PIE_COLORS = ["#8b5cf6", "#ec4899", "#14b8a6", "#eab308", "#6366f1", "#f97316"]
 
 export default function CommandCenterPage() {
   const navigate = useNavigate()
@@ -69,7 +64,6 @@ export default function CommandCenterPage() {
   // sélection dans la sidebar renvoie vers /dashboard, comme le font déjà
   // les autres boutons de navigation de cette page. `selected` ne sert
   // qu'à l'état visuel (surbrillance) de la sidebar elle-même.
-  const [selected, setSelected] = useState<SelectedView>({ type: "today" })
 
   // --- Flux suivis (mis en cache, partagé avec sidebar/Dashboard) ---
   const { data: feedsData, loading: feedsLoading } = useCachedFetch<Flux[]>(
@@ -189,44 +183,44 @@ export default function CommandCenterPage() {
 
   // --- Répartition des flux par catégorie, pour le graphique ---
   const categoryDistribution = useMemo(() => {
-    const counts: Record<string, number> = {}
+    const counts: Record<string, { value: number; color: string }> = {}
     for (const f of feeds) {
-      const label = f.categorie_id ? categoriesById[f.categorie_id]?.libelle ?? "Non classé" : "Non classé"
-      counts[label] = (counts[label] ?? 0) + 1
+      const cat = f.categorie_id ? categoriesById[f.categorie_id] : undefined
+      const label = cat?.libelle ?? "Non classé"
+      const color = cat?.couleur ?? "#9ca3af" // gris neutre pour "Non classé"
+      if (!counts[label]) {
+        counts[label] = { value: 0, color }
+      }
+      counts[label].value += 1
     }
-    return Object.entries(counts).map(([name, value]) => ({ name, value }))
+    return Object.entries(counts).map(([name, { value, color }]) => ({ name, value, color }))
   }, [feeds, categoriesById])
 
   const unreadTodayCount = todayArticles.length
 
-  const sidebarCounts = useMemo(
-      () => ({
-        today: todayArticles.length,
-        later: favorisTotal ?? 0,
-        annotated: annotesTotal ?? 0,
-        alertes: alertes.length,
-        dossiers: dossiers.length,
-      }),
-      [todayArticles, favorisTotal, annotesTotal, alertes, dossiers]
-  )
+  // const sidebarCounts = useMemo(
+  //     () => ({
+  //       today: todayArticles.length,
+  //       later: favorisTotal ?? 0,
+  //       annotated: annotesTotal ?? 0,
+  //       alertes: alertes.length,
+  //       dossiers: dossiers.length,
+  //     }),
+  //     [todayArticles, favorisTotal, annotesTotal, alertes, dossiers]
+  // )
 
   return (
       <SidebarProvider className="h-svh" style={{ "--sidebar-width": "350px" } as React.CSSProperties}>
-        <AppSidebar
+        {/* <AppSidebar
             selected={selected}
             onSelect={(view) => {
               setSelected(view)
               navigate("/dashboard")
             }}
             counts={sidebarCounts}
-        />
+        /> */}
 
         <SidebarInset className="overflow-y-auto">
-          <div className="sticky top-0 z-20 flex items-center gap-3 border-b bg-background px-4 py-3">
-            <SidebarTrigger />
-            <Separator orientation="vertical" className="h-4! self-center!" />
-            <p className="text-sm">Tableau de Bord</p>
-          </div>
 
           <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8">
             {/* 4 KPI — tous réels */}
@@ -348,9 +342,9 @@ export default function CommandCenterPage() {
                       </a>
                   ))}
                   {todayArticles.length > 0 && (
-                      <Button variant="ghost" size="sm" className="mt-1 w-full" onClick={() => navigate("/dashboard")}>
-                        Voir tout le fil
-                      </Button>
+                    <span className="text-muted-foreground w-full" >
+                      Pour voir tout le fil aller à Aujourd'hui
+                    </span>
                   )}
                 </CardContent>
               </Card>
@@ -381,8 +375,8 @@ export default function CommandCenterPage() {
                                 outerRadius={80}
                                 paddingAngle={2}
                             >
-                              {categoryDistribution.map((_, i) => (
-                                  <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                              {categoryDistribution.map((c) => (
+                                  <Cell key={c.name} fill={c.color} />
                               ))}
                             </Pie>
                             <Tooltip
@@ -398,12 +392,12 @@ export default function CommandCenterPage() {
                       </div>
                   )}
                   <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1">
-                    {categoryDistribution.map((c, i) => (
+                    {categoryDistribution.map((c) => (
                         <div key={c.name} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <span
-                          className="h-2 w-2 rounded-full"
-                          style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }}
-                      />
+                          <span
+                              className="h-2 w-2 rounded-full"
+                              style={{ backgroundColor: c.color }}
+                          />
                           {c.name} ({c.value})
                         </div>
                     ))}

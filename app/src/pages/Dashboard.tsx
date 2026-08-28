@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback,useEffect, useMemo, useState } from "react"
 import type React from "react"
 import {
+  Gauge,
   AlertCircle,
   ArrowLeft,
   Bell,
@@ -86,7 +87,7 @@ import {
   updateDossier,
 } from "@/lib/api/dossiers"
 import type { Dossier, TimelineEntry } from "@/lib/api/types"
-
+import UserDashboard from "@/components/UserDashboardView"
 // --- Forme d'article unifiee pour l'affichage (peu importe la source) ---
 interface DisplayArticle {
   id: string
@@ -142,9 +143,9 @@ const SECTION_META: Record<SelectedView["type"], SectionMetaEntry> = {
     description: "Cours des devises et matieres premieres",
   },
   dashboard: {
-    icon: LineChart,
+    icon: Gauge,
     title: "Tableau de bord",
-    description: "Vue d'ensemble",
+    description: "Tableau de board",
   },
   feed: {
     icon: Rss,
@@ -372,6 +373,11 @@ const gridStyle = { gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))"
 
 export default function Dashboard() {
   const [selected, setSelected] = useState<SelectedView>({ type: "today" })
+
+  const onToday = useCallback(() => {
+    setSelected({ type: "today" })
+  }, [])
+  // const [selected, setSelected] = useState<SelectedView>({ type: "today" })
   const [openArticle, setOpenArticle] = useState<DisplayArticle | null>(null)
   const [displayArticle, setDisplayArticle] = useState<DisplayArticle | null>(null)
   const [noteDraft, setNoteDraft] = useState("")
@@ -1141,6 +1147,8 @@ export default function Dashboard() {
             )
           ) : selected.type === "marches" ? (
             <MarchesView />
+            ) : selected.type === "dashboard" ? (
+            <UserDashboard />
           ) : selected.type === "today" ? (
             <div className="flex flex-col gap-4 p-4">
               <div className="grid content-start gap-4" style={gridStyle}>

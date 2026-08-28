@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
-import { NavLink } from "react-router-dom";
 import type React from "react"
 import { cn } from "@/lib/utils"
 import {
+  Pin,
+  PinOff,
   Plus,
   Command,
   Moon,
@@ -12,7 +13,7 @@ import {
   Clock,
   Bookmark,
   FolderSearch,
-  MoreHorizontal,
+  MoreVertical,
   ChevronRight,
   EyeOff,
   TrendingUp,
@@ -84,6 +85,8 @@ import {
 } from "@/lib/api/feeds"
 import { ApiError } from "@/lib/api/client"
 import { rechercheAvancee } from "@/lib/api/search"
+import { toggleEpingle } from "@/lib/api/feeds" 
+
 import type {
   CategorieFlux,
   Flux,
@@ -266,13 +269,16 @@ export function AppSidebar({ selected, onSelect, counts }: AppSidebarProps) {
 
   // --- Flux suivis, groupés par catégorie ---
   const filteredFeeds = feeds.filter((f) => f.nom.toLowerCase().includes(search.toLowerCase()))
+  const pinnedFeeds = filteredFeeds.filter((f) => f.isEpingle)
+  const unpinnedFeeds = filteredFeeds.filter((f) => !f.isEpingle)
+
   const byCategory = useMemo(() => {
-    return filteredFeeds.reduce<Record<string, Flux[]>>((acc, f) => {
+    return unpinnedFeeds.reduce<Record<string, Flux[]>>((acc, f) => {
       const label = f.categorie_id ? categoriesById[f.categorie_id]?.libelle ?? "Non classé" : "Non classé"
       acc[label] = acc[label] ? [...acc[label], f] : [f]
       return acc
     }, {})
-  }, [filteredFeeds, categoriesById])
+  }, [unpinnedFeeds, categoriesById])
 
   function toggleCategory(category: string) {
     setOpenCategories((prev) => ({ ...prev, [category]: !prev[category] }))
@@ -295,6 +301,20 @@ export function AppSidebar({ selected, onSelect, counts }: AppSidebarProps) {
     }
   }
 
+    async function handleToggleEpingle(feed: Flux) {
+  try {
+    await toggleEpingle(feed.id_flux, !feed.isEpingle)
+    await refreshFeeds()
+    toast.add({
+      title: feed.isEpingle ? "Flux désépinglé" : "Flux épinglé",
+      description: feed.nom,
+      type: "success",
+    })
+  } catch {
+    toast.add({ title: "Erreur", description: "Impossible de mettre à jour l'épinglage", type: "error" })
+  }
+}
+
   // --- Modale de recherche avancée cross-langue ---
   const [searchModalOpen, setSearchModalOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -305,7 +325,7 @@ export function AppSidebar({ selected, onSelect, counts }: AppSidebarProps) {
   const [searchResult, setSearchResult] = useState<RechercheAvanceeResponse | null>(null)
   const [searchError, setSearchError] = useState<string | null>(null)
   const [recentSearches, setRecentSearches] = useState<string[]>([])
-
+  const [openPinned, setOpenPinned] = useState(true)
   const [helpOpen, setHelpOpen] = useState(false)
 
   useEffect(() => {
@@ -392,8 +412,7 @@ export function AppSidebar({ selected, onSelect, counts }: AppSidebarProps) {
                       <Command className="size-4" />
                     </div>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-medium">Sentinelle</span>
-                      <span className="truncate text-xs">237</span>
+                      <span className="truncate font-medium">Sentinelle237</span>
                     </div>
                   </a>
                 }
@@ -406,19 +425,15 @@ export function AppSidebar({ selected, onSelect, counts }: AppSidebarProps) {
           <SidebarGroup>
             <SidebarGroupContent className="px-1.5 md:px-0">
               <SidebarMenu>
-
                 <SidebarMenuItem>
-                  <NavLink to="/dashboard/overview">
-                    {({ isActive }) => (
-                      <SidebarMenuButton
-                        isActive={isActive}
-                        tooltip={{ children: "Tableau de Bord", hidden: false }}
-                      >
-                          <Gauge />
-                          <span>Dashboard</span>
-                      </SidebarMenuButton>
-                    )}
-                  </NavLink>
+                  <SidebarMenuButton 
+                    isActive={isSelected({ type: "dashboard" })} 
+                    onClick={() => onSelect({ type: "dashboard" })}
+                    tooltip={{ children: "Dashboard", hidden: false }}
+                    >
+                    <Gauge />
+                    <span>Dashboard</span>
+                  </SidebarMenuButton>
                 </SidebarMenuItem>
 
                 <SidebarMenuItem>
@@ -447,7 +462,7 @@ export function AppSidebar({ selected, onSelect, counts }: AppSidebarProps) {
                   <SidebarMenuButton 
                     isActive={isSelected({ type: "marches" })} 
                     onClick={() => onSelect({ type: "marches" })}
-                    tooltip={{ children: "Cours des devises et Matières Premières", hidden: false }}
+                    tooltip={{ children: "Marchés", hidden: false }}
                     >
                     <LineChart />
                     <span>Marchés</span>
@@ -540,6 +555,123 @@ export function AppSidebar({ selected, onSelect, counts }: AppSidebarProps) {
           </div>
           
           <div className="min-h-0 flex-1 overflow-y-auto">
+
+          {pinnedFeeds.length > 0 && (
+            <Collapsible
+              open={openPinned}
+              onOpenChange={setOpenPinned}
+            >
+              <SidebarGroup>
+                <CollapsibleTrigger
+                  nativeButton={false}
+                  render={
+                    <SidebarGroupLabel className="group/pinned w-full cursor-pointer">
+                      <Pin className="h-3 w-3 shrink-0 text-muted-foreground rotate-45" />
+
+                      <span className="ml-2">Épinglés</span>
+
+                      <ChevronRight className="ml-auto h-4 w-4 transition-transform group-data-[panel-open]/pinned:rotate-90" />
+                    </SidebarGroupLabel>
+                  }
+                />
+
+                <CollapsibleContent>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {pinnedFeeds.map((feed) => (
+                        <SidebarMenuItem
+                          key={feed.id_flux}
+                          className="group/feed-item relative min-w-0"
+                        >
+                          <SidebarMenuButton
+                            isActive={isSelected({
+                              type: "feed",
+                              feedId: feed.id_flux,
+                              feedName: feed.nom,
+                            })}
+                            onClick={() =>
+                              onSelect({
+                                type: "feed",
+                                feedId: feed.id_flux,
+                                feedName: feed.nom,
+                              })
+                            }
+                          >
+                            {(() => {
+                              const color = resolveFeedColor(
+                                feed.categorie_id,
+                                categoriesById
+                              )
+
+                              return (
+                                <span
+                                  className={cn(
+                                    "h-2 w-2 shrink-0 rounded-full",
+                                    color.className
+                                  )}
+                                  style={color.style}
+                                />
+                              )
+                            })()}
+
+                            <span
+                              className="min-w-0 flex-1 overflow-hidden whitespace-nowrap"
+                              style={{
+                                maskImage:
+                                  "linear-gradient(to right, black calc(100% - 28px), transparent)",
+                                WebkitMaskImage:
+                                  "linear-gradient(to right, black calc(100% - 28px), transparent)",
+                              }}
+                              title={feed.nom}
+                            >
+                              {feed.nom}
+                            </span>
+                          </SidebarMenuButton>
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="absolute right-1 top-1/2 z-10 h-6 w-6 -translate-y-1/2 bg-sidebar opacity-0 transition-opacity group-hover/feed-item:opacity-100 data-popup-open:opacity-100"
+                                >
+                                  <MoreVertical className="h-3.5 w-3.5" />
+                                </Button>
+                              }
+                            />
+
+                            <DropdownMenuContent
+                              align="end"
+                              side="bottom"
+                              sideOffset={4}
+                              className="w-44 min-w-0"
+                            >
+                              <DropdownMenuItem
+                                onClick={() => handleToggleEpingle(feed)}
+                              >
+                                <PinOff className="h-4 w-4" />
+                                Désépingler
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => handleUnfollow(feed)}
+                              >
+                                <EyeOff className="h-4 w-4" />
+                                Ne plus suivre
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </CollapsibleContent>
+              </SidebarGroup>
+            </Collapsible>
+          )}
+
           {Object.entries(byCategory).map(([category, categoryFeeds]) => (
             <Collapsible
               key={category}
@@ -559,7 +691,14 @@ export function AppSidebar({ selected, onSelect, counts }: AppSidebarProps) {
                 <CollapsibleContent>
                   <SidebarGroupContent>
                     <SidebarMenu>
-                      {categoryFeeds.map((feed) => (
+                      {categoryFeeds
+                        .filter(
+                          (feed) =>
+                            !pinnedFeeds.some(
+                              (pinnedFeed) => pinnedFeed.id_flux === feed.id_flux
+                            )
+                        )
+                        .map((feed) => (
                         <SidebarMenuItem key={feed.id_flux} className="group/feed-item min-w-0">
                           <SidebarMenuButton
                             isActive={isSelected({ type: "feed", feedId: feed.id_flux, feedName: feed.nom })}
@@ -577,27 +716,43 @@ export function AppSidebar({ selected, onSelect, counts }: AppSidebarProps) {
                             <span
                               className="min-w-0 flex-1 overflow-hidden whitespace-nowrap"
                               style={{
-                                maskImage: "linear-gradient(to right, black calc(100% - 28px), transparent)",
-                                WebkitMaskImage: "linear-gradient(to right, black calc(100% - 28px), transparent)",
+                                maskImage:
+                                  "linear-gradient(to right, black calc(100% - 56px), transparent 100%)",
+                                WebkitMaskImage:
+                                  "linear-gradient(to right, black calc(100% - 56px), transparent 100%)",
                               }}
                               title={feed.nom}
                             >
                               {feed.nom}
                             </span>
                           </SidebarMenuButton>
+
                           <DropdownMenu>
                             <DropdownMenuTrigger
                               render={
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="absolute right-1 top-1/2 z-10 h-6 w-6 -translate-y-1/2 bg-sidebar opacity-0 transition-opacity group-hover/feed-item:opacity-100 data-popup-open:opacity-100"
+                                  className="absolute right-1 top-1/2 z-10 h-6 w-6 -translate-y-1/2 bg-sidebar opacity-0 group-hover/feed-item:opacity-100"
                                 >
-                                  <MoreHorizontal className="h-3.5 w-3.5" />
+                                  <MoreVertical className="h-3.5 w-3.5" />
                                 </Button>
                               }
                             />
                             <DropdownMenuContent align="end" side="bottom" sideOffset={4} className="w-44 min-w-0">
+                              <DropdownMenuItem onClick={() => handleToggleEpingle(feed)}>
+                                {feed.isEpingle ? (
+                                  <>
+                                    <PinOff className="h-4 w-4" />
+                                    Désépingler
+                                  </>
+                                ) : (
+                                  <>
+                                    <Pin className="h-4 w-4 rotate-45" />
+                                    Épingler
+                                  </>
+                                )}
+                              </DropdownMenuItem>
                               <DropdownMenuItem variant="destructive" onClick={() => handleUnfollow(feed)}>
                                 <EyeOff className="h-4 w-4" />
                                 Ne plus suivre

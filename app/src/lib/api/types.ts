@@ -62,6 +62,7 @@ export interface Flux {
   createdAt: string
   updatedAt: string
   created_by: string
+  isEpingle: boolean
 }
 
 export interface AddFluxPayload {

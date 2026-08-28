@@ -82,3 +82,7 @@ export async function getCategoriesFlux(): Promise<CategorieFlux[]> {
   const obj = data as Record<string, unknown>
   return Array.isArray(obj?.categories) ? (obj.categories as CategorieFlux[]) : []
 }
+
+export async function toggleEpingle(fluxId: string, epingle: boolean): Promise<void> {
+  await apiClient.patch(`/flux/${fluxId}/epingle`, { epingle })
+}
