@@ -183,6 +183,7 @@ export interface FluxArticle {
   description: string
   image: string | null
   date_publication: string
+  lu: boolean
 }
 
 export interface CategorieFlux {

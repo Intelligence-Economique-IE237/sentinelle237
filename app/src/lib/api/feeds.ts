@@ -60,6 +60,7 @@ export async function getFluxArticles(
   params?: { page?: number; limit?: number }
 ): Promise<FluxArticle[]> {
   const { data } = await apiClient.get<unknown>(`/flux/${id}/articles`, { params })
+  console.log("[getFluxArticles] erreur:", data)
   if (Array.isArray(data)) return data as FluxArticle[]
   const obj = data as Record<string, unknown>
   if (Array.isArray(obj?.articles)) return obj.articles as FluxArticle[]

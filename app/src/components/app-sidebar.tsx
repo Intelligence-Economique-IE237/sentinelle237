@@ -554,7 +554,7 @@ export function AppSidebar({ selected, onSelect, counts }: AppSidebarProps) {
             <span className="text-xs font-medium text-sidebar-foreground/70">Flux</span>
           </div>
           
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="min-h-0 h-screen flex-1 overflow-y-auto overscroll-contain pb-20">
 
           {pinnedFeeds.length > 0 && (
             <Collapsible
