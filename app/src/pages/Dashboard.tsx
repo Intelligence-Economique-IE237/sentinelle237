@@ -89,7 +89,7 @@ import type { Dossier, TimelineEntry } from "@/lib/api/types"
 
 // --- Forme d'article unifiee pour l'affichage (peu importe la source) ---
 interface DisplayArticle {
-  id: string
+  id_article: string
   feedId: string
   feedName: string
   title: string
@@ -155,7 +155,7 @@ const SECTION_META: Record<SelectedView["type"], SectionMetaEntry> = {
 
 function toDisplay(a: FluxArticle, feedId: string, feedName: string): DisplayArticle {
   return {
-    id: a.id,
+    id_article: a.id,
     feedId,
     feedName,
     title: a.titre,
@@ -199,7 +199,7 @@ function groupByDateSection(list: DisplayArticle[]) {
 }
 
 const sortedDesc = (list: DisplayArticle[]) =>
-  [...list].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+    [...list].sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
 
 function formatDate(iso: string) {
   if (!iso) return ""
@@ -225,146 +225,146 @@ interface ArticleCardProps {
 }
 
 function ArticleCard({
-  article,
-  onOpen,
-  onToggleRead,
-  onToggleSaved,
-  openNoteId,
-  onOpenNoteChange,
-  noteDraft,
-  onNoteDraftChange,
-  onSaveAnnotation,
-}: ArticleCardProps) {
+                       article,
+                       onOpen,
+                       onToggleRead,
+                       onToggleSaved,
+                       openNoteId,
+                       onOpenNoteChange,
+                       noteDraft,
+                       onNoteDraftChange,
+                       onSaveAnnotation,
+                     }: ArticleCardProps) {
   return (
-    <Card
-      className="flex h-full cursor-pointer flex-col overflow-hidden pt-0 transition-shadow hover:shadow-md"
-      onClick={() => onOpen(article)}
-    >
-      <div className="relative aspect-video w-full overflow-hidden bg-muted">
-        {article.imageUrl ? (
-          <img src={article.imageUrl} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10">
-            <Rss className="h-8 w-8 text-muted-foreground/40" />
+      <Card
+          className="flex h-full cursor-pointer flex-col overflow-hidden pt-0 transition-shadow hover:shadow-md"
+          onClick={() => onOpen(article)}
+      >
+        <div className="relative aspect-video w-full overflow-hidden bg-muted">
+          {article.imageUrl ? (
+              <img src={article.imageUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10">
+                <Rss className="h-8 w-8 text-muted-foreground/40" />
+              </div>
+          )}
+          {!article.read && (
+              <span className="absolute left-2 top-2 h-2 w-2 rounded-full bg-blue-500 ring-2 ring-background" />
+          )}
+        </div>
+
+        <CardHeader className="gap-1.5 pb-2">
+          <div className="flex items-center justify-between">
+            {article.feedName && (
+                <Badge variant="outline" className="min-w-0 max-w-[120px] shrink truncate">
+                  {article.feedName}
+                </Badge>
+            )}
+            {article.publishedAt && (
+                <span className="shrink-0 text-xs text-muted-foreground">{formatDate(article.publishedAt)}</span>
+            )}
           </div>
-        )}
-        {!article.read && (
-          <span className="absolute left-2 top-2 h-2 w-2 rounded-full bg-blue-500 ring-2 ring-background" />
-        )}
-      </div>
+          <CardTitle className="line-clamp-2 min-h-11 text-base leading-snug">
+            {article.title}
+          </CardTitle>
+        </CardHeader>
 
-      <CardHeader className="gap-1.5 pb-2">
-        <div className="flex items-center justify-between">
-          {article.feedName && (
-            <Badge variant="outline" className="min-w-0 max-w-[120px] shrink truncate">
-              {article.feedName}
-            </Badge>
+        <CardContent className="flex flex-1 flex-col justify-between space-y-2 pb-3">
+          {article.excerpt && (
+              <p className="line-clamp-2 min-h-10 text-sm text-muted-foreground">{article.excerpt}</p>
           )}
-          {article.publishedAt && (
-            <span className="shrink-0 text-xs text-muted-foreground">{formatDate(article.publishedAt)}</span>
-          )}
-        </div>
-        <CardTitle className="line-clamp-2 min-h-11 text-base leading-snug">
-          {article.title}
-        </CardTitle>
-      </CardHeader>
 
-      <CardContent className="flex flex-1 flex-col justify-between space-y-2 pb-3">
-        {article.excerpt && (
-          <p className="line-clamp-2 min-h-10 text-sm text-muted-foreground">{article.excerpt}</p>
-        )}
+          <div className="mt-auto flex items-center gap-1 border-t pt-1.5" onClick={(e) => e.stopPropagation()}>
+            <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={(e) => onToggleRead(article.id_article, e)}
+                title={article.read ? "Marquer comme non lu" : "Marquer comme vu"}
+            >
+              {article.read ? (
+                  <Eye className="h-3 w-3 text-muted-foreground" />
+              ) : (
+                  <EyeOff className="h-3 w-3" />
+              )}
+            </Button>
 
-        <div className="mt-auto flex items-center gap-1 border-t pt-1.5" onClick={(e) => e.stopPropagation()}>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={(e) => onToggleRead(article.id, e)}
-            title={article.read ? "Marquer comme non lu" : "Marquer comme vu"}
-          >
-            {article.read ? (
-              <Eye className="h-3 w-3 text-muted-foreground" />
-            ) : (
-              <EyeOff className="h-3 w-3" />
-            )}
-          </Button>
+            <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={(e) => onToggleSaved(article.id_article, e)}
+                title={article.savedForLater ? "Retirer de plus tard" : "A lire plus tard"}
+            >
+              {article.savedForLater ? (
+                  <BookmarkCheck className="h-3 w-3 text-primary" />
+              ) : (
+                  <Bookmark className="h-3 w-3" />
+              )}
+            </Button>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={(e) => onToggleSaved(article.id, e)}
-            title={article.savedForLater ? "Retirer de plus tard" : "A lire plus tard"}
-          >
-            {article.savedForLater ? (
-              <BookmarkCheck className="h-3 w-3 text-primary" />
-            ) : (
-              <Bookmark className="h-3 w-3" />
-            )}
-          </Button>
-
-          <Popover
-            open={openNoteId === article.id}
-            onOpenChange={(open) => onOpenNoteChange(open ? article.id : null)}
-          >
-            <PopoverTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => onNoteDraftChange(article.annotation ?? "")}
-                  title="Annoter"
-                >
-                  <PenLine className={article.annotation ? "h-3 w-3 text-primary" : "h-3 w-3"} />
-                </Button>
-              }
-            />
-            <PopoverContent className="w-64 space-y-2">
-              <Textarea
-                placeholder="Ta note sur cet article..."
-                value={noteDraft}
-                onChange={(e) => onNoteDraftChange(e.target.value)}
-                rows={4}
+            <Popover
+                open={openNoteId === article.id_article}
+                onOpenChange={(open) => onOpenNoteChange(open ? article.id_article : null)}
+            >
+              <PopoverTrigger
+                  render={
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => onNoteDraftChange(article.annotation ?? "")}
+                        title="Annoter"
+                    >
+                      <PenLine className={article.annotation ? "h-3 w-3 text-primary" : "h-3 w-3"} />
+                    </Button>
+                  }
               />
-              <Button size="sm" className="w-full" onClick={() => onSaveAnnotation(article.id)}>
-                Enregistrer
-              </Button>
-            </PopoverContent>
-          </Popover>
-        </div>
-      </CardContent>
-    </Card>
+              <PopoverContent className="w-64 space-y-2">
+                <Textarea
+                    placeholder="Ta note sur cet article..."
+                    value={noteDraft}
+                    onChange={(e) => onNoteDraftChange(e.target.value)}
+                    rows={4}
+                />
+                <Button size="sm" className="w-full" onClick={() => onSaveAnnotation(article.id_article)}>
+                  Enregistrer
+                </Button>
+              </PopoverContent>
+            </Popover>
+          </div>
+        </CardContent>
+      </Card>
   )
 }
 
 function PaginationBar({
-  currentPage,
-  totalPages,
-  onChange,
-}: {
+                         currentPage,
+                         totalPages,
+                         onChange,
+                       }: {
   currentPage: number
   totalPages: number
   onChange: (p: number) => void
 }) {
   if (totalPages <= 1) return null
   return (
-    <div className="flex items-center justify-center gap-3 pt-2">
-      <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => onChange(currentPage - 1)}>
-        Precedent
-      </Button>
-      <span className="text-sm text-muted-foreground">
+      <div className="flex items-center justify-center gap-3 pt-2">
+        <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => onChange(currentPage - 1)}>
+          Precedent
+        </Button>
+        <span className="text-sm text-muted-foreground">
         Page {currentPage} / {totalPages}
       </span>
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={currentPage === totalPages}
-        onClick={() => onChange(currentPage + 1)}
-      >
-        Suivant
-      </Button>
-    </div>
+        <Button
+            variant="outline"
+            size="sm"
+            disabled={currentPage === totalPages}
+            onClick={() => onChange(currentPage + 1)}
+        >
+          Suivant
+        </Button>
+      </div>
   )
 }
 
@@ -384,11 +384,11 @@ export default function Dashboard() {
 
   // --- Flux suivis, mis en cache (2 min) ---
   const { data: feedsData } = useCachedFetch<Flux[]>(
-    "feeds",
-    getMyFluxes,
-    2 * 60 * 1000,
-    [],
-    2 * 60 * 1000 // revalide automatiquement toutes les 2 min, sans spinner
+      "feeds",
+      getMyFluxes,
+      2 * 60 * 1000,
+      [],
+      2 * 60 * 1000 // revalide automatiquement toutes les 2 min, sans spinner
   )
   const feeds = feedsData ?? []
 
@@ -396,18 +396,18 @@ export default function Dashboard() {
   const feedIds = useMemo(() => feeds.map((f) => f.id_flux).sort().join(","), [feeds])
 
   const { data: allArticlesData, loading: allArticlesLoading } = useCachedFetch<DisplayArticle[]>(
-    `all-articles:${feedIds}`,
-    () =>
-      Promise.all(
-        feeds.map((f) =>
-          getFluxArticles(f.id_flux, { limit: 50 }).then((arts) =>
-            arts.map((a) => toDisplay(a, f.id_flux, f.nom))
-          )
-        )
-      ).then((results) => results.flat()),
-    2 * 60 * 1000,
-    [feedIds],
-    2 * 60 * 1000
+      `all-articles:${feedIds}`,
+      () =>
+          Promise.all(
+              feeds.map((f) =>
+                  getFluxArticles(f.id_flux, { limit: 50 }).then((arts) =>
+                      arts.map((a) => toDisplay(a, f.id_flux, f.nom))
+                  )
+              )
+          ).then((results) => results.flat()),
+      2 * 60 * 1000,
+      [feedIds],
+      2 * 60 * 1000
   )
   const allArticles = allArticlesData ?? []
 
@@ -415,20 +415,20 @@ export default function Dashboard() {
     data: feedArticlesRaw,
     loading: feedArticlesLoading,
   } = useCachedFetch(
-    selected.type === "feed" ? `feed-articles:${selected.feedId}` : "feed-articles:none",
-    () =>
-      selected.type === "feed"
-        ? getFluxArticles(selected.feedId, { limit: 50 })
-        : Promise.resolve([]),
-    2 * 60 * 1000,
-    [selected]
+      selected.type === "feed" ? `feed-articles:${selected.feedId}` : "feed-articles:none",
+      () =>
+          selected.type === "feed"
+              ? getFluxArticles(selected.feedId, { limit: 50 })
+              : Promise.resolve([]),
+      2 * 60 * 1000,
+      [selected]
   )
   const feedArticles = useMemo(
-    () =>
-      selected.type === "feed"
-        ? feedArticlesRaw?.map((a) => toDisplay(a, selected.feedId, selected.feedName)) ?? []
-        : [],
-    [feedArticlesRaw, selected]
+      () =>
+          selected.type === "feed"
+              ? feedArticlesRaw?.map((a) => toDisplay(a, selected.feedId, selected.feedName)) ?? []
+              : [],
+      [feedArticlesRaw, selected]
   )
 
   // --- Favoris ("A lire plus tard") - vraie pagination serveur ---
@@ -440,29 +440,29 @@ export default function Dashboard() {
     loading: favorisLoading,
     refresh: refreshFavoris,
   } = useCachedFetch(
-    `favoris:${favorisPage}`,
-    () => getFavoris({ page: favorisPage, limit: PAGE_SIZE }),
-    60 * 1000,
-    [favorisPage]
+      `favoris:${favorisPage}`,
+      () => getFavoris({ page: favorisPage, limit: PAGE_SIZE }),
+      60 * 1000,
+      [favorisPage]
   )
   const favoris = favorisResult?.data ?? []
 
   const favorisAsDisplay: DisplayArticle[] = useMemo(
-    () =>
-      favoris.map((f) => ({
-        id: f.id_article,
-        feedId: "",
-        feedName: "",
-        title: f.titre,
-        excerpt: "",
-        imageUrl: null,
-        url: f.lien,
-        publishedAt: "",
-        read: false,
-        savedForLater: f.favori,
-        annotation: f.note,
-      })),
-    [favoris]
+      () =>
+          favoris.map((f) => ({
+            id_article: f.id_article,
+            feedId: "",
+            feedName: "",
+            title: f.titre,
+            excerpt: "",
+            imageUrl: null,
+            url: f.lien,
+            publishedAt: "",
+            read: false,
+            savedForLater: f.favori,
+            annotation: f.note,
+          })),
+      [favoris]
   )
 
   // --- Favoris precharges au montage (pour le badge coeur partout) ---
@@ -478,8 +478,8 @@ export default function Dashboard() {
       while (true) {
         const res = await getFavoris({ page, limit })
         all = all.concat(res.data)
-        total = res.pagination.total // ← corrigé
-        if (all.length >= res.pagination.total || res.data.length === 0) break // ← corrigé
+        total = res.pagination.total
+        if (all.length >= res.pagination.total || res.data.length === 0) break
         page++
       }
       setFavoriIds(new Set(all.map((a) => a.id_article)))
@@ -498,35 +498,35 @@ export default function Dashboard() {
     loading: annotesLoading,
     refresh: refreshAnnotes,
   } = useCachedFetch(
-    `annotes:${annotesPage}`,
-    () => getAnnotes({ page: annotesPage, limit: PAGE_SIZE }),
-    60 * 1000,
-    [annotesPage]
+      `annotes:${annotesPage}`,
+      () => getAnnotes({ page: annotesPage, limit: PAGE_SIZE }),
+      60 * 1000,
+      [annotesPage]
   )
   const annotes = annotesResult?.data ?? []
 
   useEffect(() => {
     getAnnotes({ page: 1, limit: 1 })
-        .then((res) => setAnnotesTotal(res.pagination.total)) // ← corrigé
+        .then((res) => setAnnotesTotal(res.pagination.total))
         .catch(() => {})
   }, [])
 
   const annotesAsDisplay: DisplayArticle[] = useMemo(
-    () =>
-      annotes.map((a) => ({
-        id: a.id_article,
-        feedId: "",
-        feedName: "",
-        title: a.titre,
-        excerpt: "",
-        imageUrl: null,
-        url: "",
-        publishedAt: "",
-        read: false,
-        savedForLater: a.favori,
-        annotation: a.note,
-      })),
-    [annotes]
+      () =>
+          annotes.map((a) => ({
+            id_article: a.id_article,
+            feedId: "",
+            feedName: "",
+            title: a.titre,
+            excerpt: "",
+            imageUrl: null,
+            url: "",
+            publishedAt: "",
+            read: false,
+            savedForLater: a.favori,
+            annotation: a.note,
+          })),
+      [annotes]
   )
 
   // --- Etat "vu" - TODO: pas de route backend documentee pour ca, reste client-only ---
@@ -536,30 +536,32 @@ export default function Dashboard() {
 
   function enrich(a: DisplayArticle): DisplayArticle {
     const savedForLater =
-      localFavoris[a.id] !== undefined ? localFavoris[a.id] : favoriIds.has(a.id) || a.savedForLater
+        localFavoris[a.id_article] !== undefined
+            ? localFavoris[a.id_article]
+            : favoriIds.has(a.id_article) || a.savedForLater
     return {
       ...a,
-      read: readIds.has(a.id),
-      annotation: localAnnotations[a.id] ?? favoriNotes[a.id] ?? a.annotation,
+      read: readIds.has(a.id_article),
+      annotation: localAnnotations[a.id_article] ?? favoriNotes[a.id_article] ?? a.annotation,
       savedForLater,
     }
   }
 
   const enrichedAllArticles = useMemo(
-    () => allArticles.map(enrich),
-    [allArticles, readIds, localAnnotations, localFavoris, favoriIds, favoriNotes]
+      () => allArticles.map(enrich),
+      [allArticles, readIds, localAnnotations, localFavoris, favoriIds, favoriNotes]
   )
   const enrichedFeedArticles = useMemo(
-    () => feedArticles.map(enrich),
-    [feedArticles, readIds, localAnnotations, localFavoris, favoriIds, favoriNotes]
+      () => feedArticles.map(enrich),
+      [feedArticles, readIds, localAnnotations, localFavoris, favoriIds, favoriNotes]
   )
   const enrichedFavoris = useMemo(
-    () => favorisAsDisplay.map(enrich),
-    [favorisAsDisplay, readIds, localAnnotations, localFavoris, favoriIds, favoriNotes]
+      () => favorisAsDisplay.map(enrich),
+      [favorisAsDisplay, readIds, localAnnotations, localFavoris, favoriIds, favoriNotes]
   )
   const enrichedAnnotes = useMemo(
-    () => annotesAsDisplay.map(enrich),
-    [annotesAsDisplay, readIds, localAnnotations, localFavoris, favoriIds, favoriNotes]
+      () => annotesAsDisplay.map(enrich),
+      [annotesAsDisplay, readIds, localAnnotations, localFavoris, favoriIds, favoriNotes]
   )
 
   // --- Alertes, mises en cache (1 min) ---
@@ -584,14 +586,14 @@ export default function Dashboard() {
     }
     setAlertResultsLoading(true)
     getAlerteResultats(viewingResultsFor.id_alerte, { page: 1, limit: 50 })
-      .then((res) => setAlertResults(res.data))
-      .catch(() => toast.add({ title: "Impossible de charger les resultats", type: "error" }))
-      .finally(() => setAlertResultsLoading(false))
+        .then((res) => setAlertResults(res.data))
+        .catch(() => toast.add({ title: "Impossible de charger les resultats", type: "error" }))
+        .finally(() => setAlertResultsLoading(false))
   }, [viewingResultsFor])
 
   const filteredAlertes = useMemo(
-    () => alertes.filter((a) => a.mot_cle.toLowerCase().includes(alertSearch.toLowerCase())),
-    [alertes, alertSearch]
+      () => alertes.filter((a) => a.mot_cle.toLowerCase().includes(alertSearch.toLowerCase())),
+      [alertes, alertSearch]
   )
 
   // --- Dossiers, mis en cache (2 min) ---
@@ -618,9 +620,9 @@ export default function Dashboard() {
     }
     setTimelineLoading(true)
     getDossierTimeline(viewingDossier.id_dossier, { page: 1, limit: 30 })
-      .then((res) => setTimeline(res.timeline))
-      .catch(() => toast.add({ title: "Impossible de charger la timeline", type: "error" }))
-      .finally(() => setTimelineLoading(false))
+        .then((res) => setTimeline(res.timeline))
+        .catch(() => toast.add({ title: "Impossible de charger la timeline", type: "error" }))
+        .finally(() => setTimelineLoading(false))
   }, [viewingDossier])
 
   useEffect(() => {
@@ -629,27 +631,27 @@ export default function Dashboard() {
       return
     }
     getDossier(viewingDossier.id_dossier)
-      .then(setDossierDetail)
-      .catch(() => toast.add({ title: "Impossible de charger le dossier", type: "error" }))
+        .then(setDossierDetail)
+        .catch(() => toast.add({ title: "Impossible de charger le dossier", type: "error" }))
   }, [viewingDossier])
 
   const linkedAlerteIds = useMemo(
-    () => new Set((dossierDetail?.alertes ?? []).map((a) => a.alerte_id)),
-    [dossierDetail]
+      () => new Set((dossierDetail?.alertes ?? []).map((a) => a.alerte_id)),
+      [dossierDetail]
   )
   const linkedFluxIds = useMemo(
-    () => new Set((dossierDetail?.flux ?? []).map((f) => f.flux_id)),
-    [dossierDetail]
+      () => new Set((dossierDetail?.flux ?? []).map((f) => f.flux_id)),
+      [dossierDetail]
   )
 
   const filteredDossiers = useMemo(
-    () =>
-      dossiers.filter(
-        (d) =>
-          d.nom.toLowerCase().includes(dossierSearch.toLowerCase()) ||
-          (d.description ?? "").toLowerCase().includes(dossierSearch.toLowerCase())
-      ),
-    [dossiers, dossierSearch]
+      () =>
+          dossiers.filter(
+              (d) =>
+                  d.nom.toLowerCase().includes(dossierSearch.toLowerCase()) ||
+                  (d.description ?? "").toLowerCase().includes(dossierSearch.toLowerCase())
+          ),
+      [dossiers, dossierSearch]
   )
 
   // --- Pagination generique (10/page), reinitialisee a chaque changement de vue ---
@@ -657,8 +659,8 @@ export default function Dashboard() {
   useEffect(() => setPage(1), [selected])
 
   const todayArticles = useMemo(
-    () => sortedDesc(enrichedAllArticles.filter((a) => dateSectionLabel(a.publishedAt) === "Aujourd'hui")),
-    [enrichedAllArticles]
+      () => sortedDesc(enrichedAllArticles.filter((a) => dateSectionLabel(a.publishedAt) === "Aujourd'hui")),
+      [enrichedAllArticles]
   )
   const todayTotalPages = Math.max(1, Math.ceil(todayArticles.length / PAGE_SIZE))
   const todayPageItems = todayArticles.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
@@ -674,14 +676,14 @@ export default function Dashboard() {
   const sectionMeta = SECTION_META[selected.type]
 
   const counts = useMemo(
-    () => ({
-      today: todayArticles.length,
-      later: favorisTotal,
-      annotated: annotesTotal,
-      alertes: 0,
-      dossiers: dossiers.length,
-    }),
-    [todayArticles, favorisTotal, annotesTotal, dossiers]
+      () => ({
+        today: todayArticles.length,
+        later: favorisTotal,
+        annotated: annotesTotal,
+        alertes: 0,
+        dossiers: dossiers.length,
+      }),
+      [todayArticles, favorisTotal, annotesTotal, dossiers]
   )
 
   function toggleRead(id: string, e: React.MouseEvent) {
@@ -743,8 +745,8 @@ export default function Dashboard() {
 
   function handleOpenArticle(article: DisplayArticle) {
     setOpenArticle(article)
-    if (!readIds.has(article.id)) {
-      setReadIds((prev) => new Set(prev).add(article.id))
+    if (!readIds.has(article.id_article)) {
+      setReadIds((prev) => new Set(prev).add(article.id_article))
     }
   }
 
@@ -780,11 +782,11 @@ export default function Dashboard() {
     } catch (err) {
       if (err instanceof ApiError) {
         const message =
-          err.status === 409
-            ? "Ce mot-cle a deja une alerte active"
-            : err.status === 429
-              ? "Tu as atteint la limite d'alertes actives"
-              : err.message
+            err.status === 409
+                ? "Ce mot-cle a deja une alerte active"
+                : err.status === 429
+                    ? "Tu as atteint la limite d'alertes actives"
+                    : err.message
         toast.add({ title: "Erreur", description: message, type: "error" })
       } else {
         toast.add({ title: "Erreur", description: "Impossible de contacter le serveur", type: "error" })
@@ -808,7 +810,7 @@ export default function Dashboard() {
     try {
       await marquerResultatLu(viewingResultsFor.id_alerte, resultatId)
       setAlertResults((prev) =>
-        prev.map((r) => (r.id_resultat === resultatId ? { ...r, lu: true } : r))
+          prev.map((r) => (r.id_resultat === resultatId ? { ...r, lu: true } : r))
       )
     } catch {
       toast.add({ title: "Erreur", description: "Impossible de marquer comme lu", type: "error" })
@@ -839,11 +841,11 @@ export default function Dashboard() {
       setDossierFormOpen(false)
     } catch (err) {
       const message =
-        err instanceof ApiError
-          ? err.status === 409
-            ? "Ce nom de dossier est deja utilise"
-            : err.message
-          : "Impossible de contacter le serveur"
+          err instanceof ApiError
+              ? err.status === 409
+                  ? "Ce nom de dossier est deja utilise"
+                  : err.message
+              : "Impossible de contacter le serveur"
       toast.add({ title: "Erreur", description: message, type: "error" })
       throw err
     }
@@ -918,429 +920,429 @@ export default function Dashboard() {
   }
 
   return (
-    <SidebarProvider className="h-svh" style={{ "--sidebar-width": "350px" } as React.CSSProperties}>
-      <AppSidebar selected={selected} onSelect={setSelected} counts={counts} />
+      <SidebarProvider className="h-svh" style={{ "--sidebar-width": "350px" } as React.CSSProperties}>
+        <AppSidebar selected={selected} onSelect={setSelected} counts={counts} />
 
-      <SidebarInset className="overflow-y-auto">
-        <div className="relative flex-1 overflow-y-auto">
-          <div className="sticky top-0 z-20 flex items-start justify-between gap-3 bg-background px-4 py-3">
-            <div className="flex items-center gap-3">
-              <SidebarTrigger />
-              <Separator orientation="vertical" className="h-4! self-center!" />
-              <p className="text-sm leading-none">{sectionMeta.description}</p>
-              {selected.type === "feed" && (
-                <>
-                  <Separator orientation="vertical" className="h-4! self-center!" />
-                  <p className="text-sm font-medium leading-none">{selected.feedName}</p>
-                </>
-              )}
-            </div>
+        <SidebarInset className="overflow-y-auto">
+          <div className="relative flex-1 overflow-y-auto">
+            <div className="sticky top-0 z-20 flex items-start justify-between gap-3 bg-background px-4 py-3">
+              <div className="flex items-center gap-3">
+                <SidebarTrigger />
+                <Separator orientation="vertical" className="h-4! self-center!" />
+                <p className="text-sm leading-none">{sectionMeta.description}</p>
+                {selected.type === "feed" && (
+                    <>
+                      <Separator orientation="vertical" className="h-4! self-center!" />
+                      <p className="text-sm font-medium leading-none">{selected.feedName}</p>
+                    </>
+                )}
+              </div>
 
-            {/* <div className="flex items-center gap-2">
+              {/* <div className="flex items-center gap-2">
               <Button size="sm" className="gap-2" onClick={() => setRevuesDialogOpen(true)}>
                 <FileText className="h-4 w-4" />
                 Generer une revue
               </Button>
             </div> */}
-          </div>
-
-          <div
-            className="pointer-events-none sticky top-[45px] z-10 -mt-6 h-6 w-full backdrop-blur-sm"
-            style={{
-              maskImage: "linear-gradient(to bottom, black, transparent)",
-              WebkitMaskImage: "linear-gradient(to bottom, black, transparent)",
-            }}
-          />
-
-          {selected.type === "alertes" ? (
-            <div className="space-y-3 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <Button onClick={openCreateAlert} className="gap-1.5">
-                  <BellPlus className="h-4 w-4" />
-                  Nouvelle alerte
-                </Button>
-                <Input
-                  placeholder="Rechercher l'alerte parmis plusieurs..."
-                  value={alertSearch}
-                  onChange={(e) => setAlertSearch(e.target.value)}
-                  className="pl-2"
-                />
-                <Badge variant="default" className="h-5 px-1.5 text-xs">
-                  {filteredAlertes.length} alerte{filteredAlertes.length !== 1 ? "s" : ""}
-                </Badge>
-              </div>
-
-              {alertesLoading && (
-                <p className="pt-8 text-center text-sm text-muted-foreground">Chargement...</p>
-              )}
-              {!alertesLoading && filteredAlertes.length === 0 && (
-                <p className="pt-8 text-center text-sm text-muted-foreground">
-                  {alertSearch ? "Aucune alerte ne correspond" : "Aucune alerte pour l'instant"}
-                </p>
-              )}
-
-              {filteredAlertes.map((alerte) => (
-                <div key={alerte.id_alerte} className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50">
-                  <button
-                    type="button"
-                    onClick={() => setViewingResultsFor(alerte)}
-                    className="flex flex-1 items-center gap-3 text-left"
-                  >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted">
-                      <Bell className="h-4 w-4" />
-                    </div>
-                    <div className="flex-1">
-                      <span className="text-sm font-medium">{alerte.mot_cle}</span>
-                      <p className="text-xs text-muted-foreground">
-                        {FREQUENCE_LABELS[alerte.frequence]} - {LANGUE_LABELS[alerte.langue]}
-                        {alerte.pays ? ` - ${alerte.pays}` : ""}
-                      </p>
-                    </div>
-                  </button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditAlert(alerte)}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive"
-                    onClick={() => handleDeleteAlert(alerte)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ))}
             </div>
-          ) : selected.type === "dossiers" ? (
-            viewingDossier ? (
-              <div className="space-y-3 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => setViewingDossier(null)}>
-                    <ArrowLeft className="h-4 w-4" />
-                    {viewingDossier.nom}
-                  </Button>
-                  <Button size="sm" className="gap-1.5" onClick={() => setLinkDialogOpen(true)}>
-                    <Link2 className="h-4 w-4" />
-                    Lier alerte/flux
-                  </Button>
+
+            <div
+                className="pointer-events-none sticky top-[45px] z-10 -mt-6 h-6 w-full backdrop-blur-sm"
+                style={{
+                  maskImage: "linear-gradient(to bottom, black, transparent)",
+                  WebkitMaskImage: "linear-gradient(to bottom, black, transparent)",
+                }}
+            />
+
+            {selected.type === "alertes" ? (
+                <div className="space-y-3 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <Button onClick={openCreateAlert} className="gap-1.5">
+                      <BellPlus className="h-4 w-4" />
+                      Nouvelle alerte
+                    </Button>
+                    <Input
+                        placeholder="Rechercher l'alerte parmis plusieurs..."
+                        value={alertSearch}
+                        onChange={(e) => setAlertSearch(e.target.value)}
+                        className="pl-2"
+                    />
+                    <Badge variant="default" className="h-5 px-1.5 text-xs">
+                      {filteredAlertes.length} alerte{filteredAlertes.length !== 1 ? "s" : ""}
+                    </Badge>
+                  </div>
+
+                  {alertesLoading && (
+                      <p className="pt-8 text-center text-sm text-muted-foreground">Chargement...</p>
+                  )}
+                  {!alertesLoading && filteredAlertes.length === 0 && (
+                      <p className="pt-8 text-center text-sm text-muted-foreground">
+                        {alertSearch ? "Aucune alerte ne correspond" : "Aucune alerte pour l'instant"}
+                      </p>
+                  )}
+
+                  {filteredAlertes.map((alerte) => (
+                      <div key={alerte.id_alerte} className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50">
+                        <button
+                            type="button"
+                            onClick={() => setViewingResultsFor(alerte)}
+                            className="flex flex-1 items-center gap-3 text-left"
+                        >
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted">
+                            <Bell className="h-4 w-4" />
+                          </div>
+                          <div className="flex-1">
+                            <span className="text-sm font-medium">{alerte.mot_cle}</span>
+                            <p className="text-xs text-muted-foreground">
+                              {FREQUENCE_LABELS[alerte.frequence]} - {LANGUE_LABELS[alerte.langue]}
+                              {alerte.pays ? ` - ${alerte.pays}` : ""}
+                            </p>
+                          </div>
+                        </button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditAlert(alerte)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteAlert(alerte)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                  ))}
                 </div>
+            ) : selected.type === "dossiers" ? (
+                viewingDossier ? (
+                    <div className="space-y-3 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => setViewingDossier(null)}>
+                          <ArrowLeft className="h-4 w-4" />
+                          {viewingDossier.nom}
+                        </Button>
+                        <Button size="sm" className="gap-1.5" onClick={() => setLinkDialogOpen(true)}>
+                          <Link2 className="h-4 w-4" />
+                          Lier alerte/flux
+                        </Button>
+                      </div>
 
-                {timelineLoading && (
-                  <p className="pt-8 text-center text-sm text-muted-foreground">Chargement...</p>
-                )}
-                {!timelineLoading && timeline.length === 0 && (
-                  <p className="pt-8 text-center text-sm text-muted-foreground">
-                    Aucun element dans cette timeline - lie une alerte ou un flux pour commencer
-                  </p>
-                )}
-
-                {timeline.map((entry) => (
-                  <div key={entry.id} className="group relative">
-                    <a
-                      href={entry.lien}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex gap-3 rounded-lg border p-3 pr-10 hover:bg-accent/50"
-                    >
-                      {entry.image && (
-                        <img src={entry.image} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover" />
+                      {timelineLoading && (
+                          <p className="pt-8 text-center text-sm text-muted-foreground">Chargement...</p>
                       )}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">{entry.sourceLabel}</Badge>
-                          <Badge variant="secondary" className="text-xs">
-                            {entry.type === "alerte" ? "Alerte" : "Flux"}
-                          </Badge>
-                          {entry.signalFort && (
-                            <Badge className="gap-1 bg-orange-500 text-xs text-white hover:bg-orange-500">
-                              <Flame className="h-3 w-3" />
-                              Signal fort
-                            </Badge>
-                          )}
-                          <span className="text-xs text-muted-foreground">{formatDate(entry.date)}</span>
-                        </div>
-                        <p className="mt-1 text-sm font-medium">{entry.titre}</p>
-                        <p className="line-clamp-1 text-xs text-muted-foreground">{entry.description}</p>
-                      </div>
-                    </a>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-2 top-1/2 h-7 w-7 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        if (entry.type === "alerte") handleUnlinkAlerte(entry.id)
-                        else handleUnlinkFlux(entry.id)
-                      }}
-                      title="Delier"
-                    >
-                      X
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-3 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <Button onClick={openCreateDossier} className="gap-1.5">
-                    <FolderPlus className="h-4 w-4" />
-                    Nouveau dossier
-                  </Button>
-                  <Input
-                    placeholder="Rechercher un dossier..."
-                    value={dossierSearch}
-                    onChange={(e) => setDossierSearch(e.target.value)}
-                    className="pl-2"
-                  />
-                  <Badge variant="default" className="h-5 px-1.5 text-xs">
-                    {filteredDossiers.length} dossier{filteredDossiers.length !== 1 ? "s" : ""}
-                  </Badge>
-                </div>
+                      {!timelineLoading && timeline.length === 0 && (
+                          <p className="pt-8 text-center text-sm text-muted-foreground">
+                            Aucun element dans cette timeline - lie une alerte ou un flux pour commencer
+                          </p>
+                      )}
 
-                {dossiersLoading && (
-                  <p className="pt-8 text-center text-sm text-muted-foreground">Chargement...</p>
-                )}
-                {!dossiersLoading && filteredDossiers.length === 0 && (
-                  <p className="pt-8 text-center text-sm text-muted-foreground">
-                    {dossierSearch ? "Aucun dossier ne correspond" : "Aucun dossier pour l'instant"}
-                  </p>
-                )}
+                      {timeline.map((entry) => (
+                          <div key={entry.id} className="group relative">
+                            <a
+                                href={entry.lien}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex gap-3 rounded-lg border p-3 pr-10 hover:bg-accent/50"
+                            >
+                              {entry.image && (
+                                  <img src={entry.image} alt="" className="h-16 w-16 shrink-0 rounded-md object-cover" />
+                              )}
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-xs">{entry.sourceLabel}</Badge>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {entry.type === "alerte" ? "Alerte" : "Flux"}
+                                  </Badge>
+                                  {entry.signalFort && (
+                                      <Badge className="gap-1 bg-orange-500 text-xs text-white hover:bg-orange-500">
+                                        <Flame className="h-3 w-3" />
+                                        Signal fort
+                                      </Badge>
+                                  )}
+                                  <span className="text-xs text-muted-foreground">{formatDate(entry.date)}</span>
+                                </div>
+                                <p className="mt-1 text-sm font-medium">{entry.titre}</p>
+                                <p className="line-clamp-1 text-xs text-muted-foreground">{entry.description}</p>
+                              </div>
+                            </a>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="absolute right-2 top-1/2 h-7 w-7 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  if (entry.type === "alerte") handleUnlinkAlerte(entry.id)
+                                  else handleUnlinkFlux(entry.id)
+                                }}
+                                title="Delier"
+                            >
+                              X
+                            </Button>
+                          </div>
+                      ))}
+                    </div>
+                ) : (
+                    <div className="space-y-3 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <Button onClick={openCreateDossier} className="gap-1.5">
+                          <FolderPlus className="h-4 w-4" />
+                          Nouveau dossier
+                        </Button>
+                        <Input
+                            placeholder="Rechercher un dossier..."
+                            value={dossierSearch}
+                            onChange={(e) => setDossierSearch(e.target.value)}
+                            className="pl-2"
+                        />
+                        <Badge variant="default" className="h-5 px-1.5 text-xs">
+                          {filteredDossiers.length} dossier{filteredDossiers.length !== 1 ? "s" : ""}
+                        </Badge>
+                      </div>
 
-                {filteredDossiers.map((dossier) => (
-                  <div key={dossier.id_dossier} className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50">
-                    <button
-                      type="button"
-                      onClick={() => setViewingDossier(dossier)}
-                      className="flex flex-1 items-center gap-3 text-left"
-                    >
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted">
-                        <FolderSearch className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1">
-                        <span className="text-sm font-medium">{dossier.nom}</span>
-                        {dossier.description && (
-                          <p className="line-clamp-1 text-xs text-muted-foreground">{dossier.description}</p>
-                        )}
-                      </div>
-                    </button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDossier(dossier)}>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => handleDeleteDossier(dossier)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )
-          ) : selected.type === "marches" ? (
-            <MarchesView />
-          ) : selected.type === "today" ? (
-            <div className="flex flex-col gap-4 p-4">
-              <div className="grid content-start gap-4" style={gridStyle}>
-                {allArticlesLoading && (
-                  <p className="col-span-full text-center text-sm text-muted-foreground">Chargement...</p>
-                )}
-                {!allArticlesLoading && todayPageItems.length === 0 && (
-                  <div className="col-span-full flex flex-col items-center gap-3 px-4 py-8 text-center">
-                    <p className="flex flex-wrap items-center justify-center gap-1 text-sm text-muted-foreground">
-                      <span>Aucun article publie aujourd'hui - ajoute des flux pour voir des articles - Aller sur</span>
-                      <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-muted">
+                      {dossiersLoading && (
+                          <p className="pt-8 text-center text-sm text-muted-foreground">Chargement...</p>
+                      )}
+                      {!dossiersLoading && filteredDossiers.length === 0 && (
+                          <p className="pt-8 text-center text-sm text-muted-foreground">
+                            {dossierSearch ? "Aucun dossier ne correspond" : "Aucun dossier pour l'instant"}
+                          </p>
+                      )}
+
+                      {filteredDossiers.map((dossier) => (
+                          <div key={dossier.id_dossier} className="flex items-center gap-3 rounded-lg border p-3 hover:bg-accent/50">
+                            <button
+                                type="button"
+                                onClick={() => setViewingDossier(dossier)}
+                                className="flex flex-1 items-center gap-3 text-left"
+                            >
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted">
+                                <FolderSearch className="h-4 w-4" />
+                              </div>
+                              <div className="flex-1">
+                                <span className="text-sm font-medium">{dossier.nom}</span>
+                                {dossier.description && (
+                                    <p className="line-clamp-1 text-xs text-muted-foreground">{dossier.description}</p>
+                                )}
+                              </div>
+                            </button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDossier(dossier)}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => handleDeleteDossier(dossier)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                      ))}
+                    </div>
+                )
+            ) : selected.type === "marches" ? (
+                <MarchesView />
+            ) : selected.type === "today" ? (
+                <div className="flex flex-col gap-4 p-4">
+                  <div className="grid content-start gap-4" style={gridStyle}>
+                    {allArticlesLoading && (
+                        <p className="col-span-full text-center text-sm text-muted-foreground">Chargement...</p>
+                    )}
+                    {!allArticlesLoading && todayPageItems.length === 0 && (
+                        <div className="col-span-full flex flex-col items-center gap-3 px-4 py-8 text-center">
+                          <p className="flex flex-wrap items-center justify-center gap-1 text-sm text-muted-foreground">
+                            <span>Aucun article publie aujourd'hui - ajoute des flux pour voir des articles - Aller sur</span>
+                            <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-muted">
                         <Plus className="h-3 w-3" />
                       </span>
-                    </p>
-                  </div>
-                )}
-                {todayPageItems.map((article) => (
-                  <ArticleCard
-                    key={article.id}
-                    article={article}
-                    onOpen={handleOpenArticle}
-                    onToggleRead={toggleRead}
-                    onToggleSaved={toggleSavedForLater}
-                    openNoteId={openNoteId}
-                    onOpenNoteChange={setOpenNoteId}
-                    noteDraft={noteDraft}
-                    onNoteDraftChange={setNoteDraft}
-                    onSaveAnnotation={saveAnnotation}
-                  />
-                ))}
-              </div>
-              <PaginationBar currentPage={page} totalPages={todayTotalPages} onChange={setPage} />
-            </div>
-          ) : selected.type === "later" ? (
-            <div className="flex flex-col gap-4 p-4">
-              <div className="grid content-start gap-4" style={gridStyle}>
-                {favorisLoading && (
-                  <p className="col-span-full text-center text-sm text-muted-foreground">Chargement...</p>
-                )}
-                {!favorisLoading && enrichedFavoris.length === 0 && (
-                  <p className="col-span-full text-center text-sm text-muted-foreground">
-                    Aucun article mis de côté
-                  </p>
-                )}
-                {enrichedFavoris.map((article) => (
-                  <ArticleCard
-                    key={article.id}
-                    article={article}
-                    onOpen={handleOpenArticle}
-                    onToggleRead={toggleRead}
-                    onToggleSaved={toggleSavedForLater}
-                    openNoteId={openNoteId}
-                    onOpenNoteChange={setOpenNoteId}
-                    noteDraft={noteDraft}
-                    onNoteDraftChange={setNoteDraft}
-                    onSaveAnnotation={saveAnnotation}
-                  />
-                ))}
-              </div>
-              <PaginationBar currentPage={favorisPage} totalPages={favorisTotalPages} onChange={setFavorisPage} />
-            </div>
-          ) : selected.type === "annotated" ? (
-            <div className="flex flex-col gap-4 p-4">
-              <div className="grid content-start gap-4" style={gridStyle}>
-                {annotesLoading && (
-                  <p className="col-span-full text-center text-sm text-muted-foreground">Chargement...</p>
-                )}
-                {!annotesLoading && enrichedAnnotes.length === 0 && (
-                  <p className="col-span-full text-center text-sm text-muted-foreground">
-                    Aucun article annote pour l'instant
-                  </p>
-                )}
-                {enrichedAnnotes.map((article) => (
-                  <ArticleCard
-                    key={article.id}
-                    article={article}
-                    onOpen={handleOpenArticle}
-                    onToggleRead={toggleRead}
-                    onToggleSaved={toggleSavedForLater}
-                    openNoteId={openNoteId}
-                    onOpenNoteChange={setOpenNoteId}
-                    noteDraft={noteDraft}
-                    onNoteDraftChange={setNoteDraft}
-                    onSaveAnnotation={saveAnnotation}
-                  />
-                ))}
-              </div>
-              <PaginationBar currentPage={annotesPage} totalPages={annotesTotalPages} onChange={setAnnotesPage} />
-            </div>
-          ) : (
-            <div className="flex flex-col gap-6 p-4">
-              {feedArticlesLoading && (
-                <p className="text-center text-sm text-muted-foreground">Chargement...</p>
-              )}
-              {!feedArticlesLoading && feedGroups.length === 0 && (
-                <p className="text-center text-sm text-muted-foreground">Aucun article pour ce flux</p>
-              )}
-              {feedGroups.map((group) => (
-                <div key={group.label} className="space-y-3">
-                  <h3 className="text-sm font-semibold text-muted-foreground">{group.label}</h3>
-                  <div className="grid content-start gap-4" style={gridStyle}>
-                    {group.items.map((article) => (
-                      <ArticleCard
-                        key={article.id}
-                        article={article}
-                        onOpen={handleOpenArticle}
-                        onToggleRead={toggleRead}
-                        onToggleSaved={toggleSavedForLater}
-                        openNoteId={openNoteId}
-                        onOpenNoteChange={setOpenNoteId}
-                        noteDraft={noteDraft}
-                        onNoteDraftChange={setNoteDraft}
-                        onSaveAnnotation={saveAnnotation}
-                      />
+                          </p>
+                        </div>
+                    )}
+                    {todayPageItems.map((article) => (
+                        <ArticleCard
+                            key={article.id_article}
+                            article={article}
+                            onOpen={handleOpenArticle}
+                            onToggleRead={toggleRead}
+                            onToggleSaved={toggleSavedForLater}
+                            openNoteId={openNoteId}
+                            onOpenNoteChange={setOpenNoteId}
+                            noteDraft={noteDraft}
+                            onNoteDraftChange={setNoteDraft}
+                            onSaveAnnotation={saveAnnotation}
+                        />
                     ))}
                   </div>
+                  <PaginationBar currentPage={page} totalPages={todayTotalPages} onChange={setPage} />
                 </div>
-              ))}
-              <PaginationBar currentPage={page} totalPages={feedTotalPages} onChange={setPage} />
-            </div>
-          )}
-        </div>
-      </SidebarInset>
-
-      <Dialog open={!!openArticle} onOpenChange={(open) => !open && setOpenArticle(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
-          {displayArticle && (
-            <>
-              {displayArticle.imageUrl && (
-                <div className="aspect-video w-full overflow-hidden rounded-lg bg-muted">
-                  <img src={displayArticle.imageUrl} alt="" className="h-full w-full object-cover" />
+            ) : selected.type === "later" ? (
+                <div className="flex flex-col gap-4 p-4">
+                  <div className="grid content-start gap-4" style={gridStyle}>
+                    {favorisLoading && (
+                        <p className="col-span-full text-center text-sm text-muted-foreground">Chargement...</p>
+                    )}
+                    {!favorisLoading && enrichedFavoris.length === 0 && (
+                        <p className="col-span-full text-center text-sm text-muted-foreground">
+                          Aucun article mis de côté
+                        </p>
+                    )}
+                    {enrichedFavoris.map((article) => (
+                        <ArticleCard
+                            key={article.id_article}
+                            article={article}
+                            onOpen={handleOpenArticle}
+                            onToggleRead={toggleRead}
+                            onToggleSaved={toggleSavedForLater}
+                            openNoteId={openNoteId}
+                            onOpenNoteChange={setOpenNoteId}
+                            noteDraft={noteDraft}
+                            onNoteDraftChange={setNoteDraft}
+                            onSaveAnnotation={saveAnnotation}
+                        />
+                    ))}
+                  </div>
+                  <PaginationBar currentPage={favorisPage} totalPages={favorisTotalPages} onChange={setFavorisPage} />
                 </div>
-              )}
-              <DialogHeader>
-                <div className="flex items-center gap-2">
-                  {displayArticle.feedName && <Badge variant="outline">{displayArticle.feedName}</Badge>}
-                  {displayArticle.publishedAt && (
-                    <span className="text-xs text-muted-foreground">{formatDate(displayArticle.publishedAt)}</span>
+            ) : selected.type === "annotated" ? (
+                <div className="flex flex-col gap-4 p-4">
+                  <div className="grid content-start gap-4" style={gridStyle}>
+                    {annotesLoading && (
+                        <p className="col-span-full text-center text-sm text-muted-foreground">Chargement...</p>
+                    )}
+                    {!annotesLoading && enrichedAnnotes.length === 0 && (
+                        <p className="col-span-full text-center text-sm text-muted-foreground">
+                          Aucun article annote pour l'instant
+                        </p>
+                    )}
+                    {enrichedAnnotes.map((article) => (
+                        <ArticleCard
+                            key={article.id_article}
+                            article={article}
+                            onOpen={handleOpenArticle}
+                            onToggleRead={toggleRead}
+                            onToggleSaved={toggleSavedForLater}
+                            openNoteId={openNoteId}
+                            onOpenNoteChange={setOpenNoteId}
+                            noteDraft={noteDraft}
+                            onNoteDraftChange={setNoteDraft}
+                            onSaveAnnotation={saveAnnotation}
+                        />
+                    ))}
+                  </div>
+                  <PaginationBar currentPage={annotesPage} totalPages={annotesTotalPages} onChange={setAnnotesPage} />
+                </div>
+            ) : (
+                <div className="flex flex-col gap-6 p-4">
+                  {feedArticlesLoading && (
+                      <p className="text-center text-sm text-muted-foreground">Chargement...</p>
                   )}
+                  {!feedArticlesLoading && feedGroups.length === 0 && (
+                      <p className="text-center text-sm text-muted-foreground">Aucun article pour ce flux</p>
+                  )}
+                  {feedGroups.map((group) => (
+                      <div key={group.label} className="space-y-3">
+                        <h3 className="text-sm font-semibold text-muted-foreground">{group.label}</h3>
+                        <div className="grid content-start gap-4" style={gridStyle}>
+                          {group.items.map((article) => (
+                              <ArticleCard
+                                  key={article.id_article}
+                                  article={article}
+                                  onOpen={handleOpenArticle}
+                                  onToggleRead={toggleRead}
+                                  onToggleSaved={toggleSavedForLater}
+                                  openNoteId={openNoteId}
+                                  onOpenNoteChange={setOpenNoteId}
+                                  noteDraft={noteDraft}
+                                  onNoteDraftChange={setNoteDraft}
+                                  onSaveAnnotation={saveAnnotation}
+                              />
+                          ))}
+                        </div>
+                      </div>
+                  ))}
+                  <PaginationBar currentPage={page} totalPages={feedTotalPages} onChange={setPage} />
                 </div>
-                <DialogTitle className="text-lg leading-snug">{displayArticle.title}</DialogTitle>
-                <DialogDescription className="pt-2 text-sm leading-relaxed text-foreground">
-                  {displayArticle.excerpt}
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button
-                  className="w-full gap-2"
-                  onClick={() => window.open(displayArticle.url, "_blank", "noopener,noreferrer")}
-                >
-                  Lire l'article original
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+            )}
+          </div>
+        </SidebarInset>
 
-      <AlertFormDialog
-        open={alertFormOpen}
-        onOpenChange={setAlertFormOpen}
-        editingAlerte={editingAlerte}
-        onSubmit={handleAlertFormSubmit}
-      />
+        <Dialog open={!!openArticle} onOpenChange={(open) => !open && setOpenArticle(null)}>
+          <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
+            {displayArticle && (
+                <>
+                  {displayArticle.imageUrl && (
+                      <div className="aspect-video w-full overflow-hidden rounded-lg bg-muted">
+                        <img src={displayArticle.imageUrl} alt="" className="h-full w-full object-cover" />
+                      </div>
+                  )}
+                  <DialogHeader>
+                    <div className="flex items-center gap-2">
+                      {displayArticle.feedName && <Badge variant="outline">{displayArticle.feedName}</Badge>}
+                      {displayArticle.publishedAt && (
+                          <span className="text-xs text-muted-foreground">{formatDate(displayArticle.publishedAt)}</span>
+                      )}
+                    </div>
+                    <DialogTitle className="text-lg leading-snug">{displayArticle.title}</DialogTitle>
+                    <DialogDescription className="pt-2 text-sm leading-relaxed text-foreground">
+                      {displayArticle.excerpt}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <Button
+                        className="w-full gap-2"
+                        onClick={() => window.open(displayArticle.url, "_blank", "noopener,noreferrer")}
+                    >
+                      Lire l'article original
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </DialogFooter>
+                </>
+            )}
+          </DialogContent>
+        </Dialog>
 
-      <AlertResultsDialog
-        alerte={viewingResultsFor}
-        results={alertResults}
-        loading={alertResultsLoading}
-        onOpenChange={(open) => !open && setViewingResultsFor(null)}
-        onMarkRead={handleMarkResultRead}
-      />
+        <AlertFormDialog
+            open={alertFormOpen}
+            onOpenChange={setAlertFormOpen}
+            editingAlerte={editingAlerte}
+            onSubmit={handleAlertFormSubmit}
+        />
 
-      <DossierFormDialog
-        open={dossierFormOpen}
-        onOpenChange={setDossierFormOpen}
-        editingDossier={editingDossier}
-        onSubmit={handleDossierFormSubmit}
-      />
+        <AlertResultsDialog
+            alerte={viewingResultsFor}
+            results={alertResults}
+            loading={alertResultsLoading}
+            onOpenChange={(open) => !open && setViewingResultsFor(null)}
+            onMarkRead={handleMarkResultRead}
+        />
 
-      <LinkToDossierDialog
-        open={linkDialogOpen}
-        onOpenChange={setLinkDialogOpen}
-        availableAlertes={alertes}
-        availableFeeds={feeds}
-        linkedAlerteIds={linkedAlerteIds}
-        linkedFluxIds={linkedFluxIds}
-        onLinkAlerte={handleLinkAlerte}
-        onUnlinkAlerte={handleUnlinkAlerte}
-        onLinkFlux={handleLinkFlux}
-        onUnlinkFlux={handleUnlinkFlux}
-      />
+        <DossierFormDialog
+            open={dossierFormOpen}
+            onOpenChange={setDossierFormOpen}
+            editingDossier={editingDossier}
+            onSubmit={handleDossierFormSubmit}
+        />
 
-      <RevuesDialog
-        open={revuesDialogOpen}
-        onOpenChange={setRevuesDialogOpen}
-        dossiers={dossiers}
-        feeds={feeds}
-      />
-    </SidebarProvider>
+        <LinkToDossierDialog
+            open={linkDialogOpen}
+            onOpenChange={setLinkDialogOpen}
+            availableAlertes={alertes}
+            availableFeeds={feeds}
+            linkedAlerteIds={linkedAlerteIds}
+            linkedFluxIds={linkedFluxIds}
+            onLinkAlerte={handleLinkAlerte}
+            onUnlinkAlerte={handleUnlinkAlerte}
+            onLinkFlux={handleLinkFlux}
+            onUnlinkFlux={handleUnlinkFlux}
+        />
+
+        <RevuesDialog
+            open={revuesDialogOpen}
+            onOpenChange={setRevuesDialogOpen}
+            dossiers={dossiers}
+            feeds={feeds}
+        />
+      </SidebarProvider>
   )
 }
