@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type React from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Eye, EyeOff } from "lucide-react"
@@ -24,6 +24,11 @@ async function redirectAfterLogin(navigate: ReturnType<typeof useNavigate>) {
   navigate(me.role === "admin" ? "/admin" : "/dashboard")
 }
 
+type VerificationMessage = {
+  type: "success" | "error"
+  text: string
+}
+
 export default function Login() {
   const navigate = useNavigate()
 
@@ -35,6 +40,33 @@ export default function Login() {
   // Étape 2 : code TOTP, uniquement si le compte a la double authentification activée
   const [tempToken, setTempToken] = useState<string | null>(null)
   const [totpCode, setTotpCode] = useState("")
+
+  // Retour de vérification d'email (?verified=1 ou ?verified=0&erreur=...) —
+  // affiché en texte simple en haut du formulaire, pas en toast.
+  const [verificationMessage, setVerificationMessage] = useState<VerificationMessage | null>(null)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const verified = params.get("verified")
+
+    if (verified === "1") {
+      setVerificationMessage({
+        type: "success",
+        text: "Ton compte est activé, tu peux te connecter.",
+      })
+    } else if (verified === "0") {
+      const erreur = params.get("erreur")
+      setVerificationMessage({
+        type: "error",
+        text: erreur ? decodeURIComponent(erreur) : "Le lien est invalide ou a expiré.",
+      })
+    }
+
+    // Nettoie l'URL pour ne pas garder ?verified=... si l'utilisateur rafraîchit la page
+    if (verified !== null) {
+      window.history.replaceState({}, "", window.location.pathname)
+    }
+  }, [])
 
   function updateField<K extends keyof LoginFormValues>(field: K, value: string) {
     setValues((prev) => ({ ...prev, [field]: value }))
@@ -113,6 +145,17 @@ export default function Login() {
                   <CardDescription>Connecte-toi à ton compte</CardDescription>
                 </CardHeader>
                 <CardContent>
+                  {verificationMessage && (
+                      <p
+                          className={
+                            verificationMessage.type === "success"
+                                ? "mb-4 text-sm text-green-600"
+                                : "mb-4 text-sm text-destructive"
+                          }
+                      >
+                        {verificationMessage.text}
+                      </p>
+                  )}
                   <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                     <div className="space-y-2">
                       <Label htmlFor="mail">Email</Label>
