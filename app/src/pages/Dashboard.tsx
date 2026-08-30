@@ -698,25 +698,25 @@ useEffect(() => {
     [todayArticles, favorisTotal, annotesTotal, dossiers]
   )
 
-async function toggleRead(id: string, e: React.MouseEvent) {
+async function toggleRead(id_article: string, e: React.MouseEvent) {
   e.stopPropagation()
-  const current = readIds.has(id)
+  const current = readIds.has(id_article)
   const next = !current
 
   setReadIds((prev) => {
     const updated = new Set(prev)
-    if (next) updated.add(id)
-    else updated.delete(id)
+    if (next) updated.add(id_article)
+    else updated.delete(id_article)
     return updated
   })
 
   try {
-    await updateArticleLu(id, next)
+    await updateArticleLu(id_article, next)
   } catch {
     setReadIds((prev) => {
       const updated = new Set(prev)
-      if (current) updated.add(id)
-      else updated.delete(id)
+      if (current) updated.add(id_article)
+      else updated.delete(id_article)
       return updated
     })
     toast.add({ title: "Erreur", description: "Impossible de marquer l'article", type: "error" })
