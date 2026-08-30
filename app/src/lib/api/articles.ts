@@ -43,6 +43,6 @@ export async function getAnnotes(params?: {
   return { data: list, pagination }
 }
 
-export async function updateArticleLu(id: string, lu: boolean): Promise<void> {
-  await apiClient.patch(`/articles/${id}/lu`, { lu })
+export async function updateArticleLu(id_article: string, lu: boolean): Promise<void> {
+  await apiClient.patch(`/articles/${id_article}/lu`, { lu })
 }

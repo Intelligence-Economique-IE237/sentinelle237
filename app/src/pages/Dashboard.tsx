@@ -164,7 +164,7 @@ function toDisplay(a: FluxArticle, feedId: string, feedName: string): DisplayArt
     imageUrl: a.image,
     url: a.lien,
     publishedAt: a.date_publication,
-    read: false,
+    read: a.lu,
     savedForLater: false,
     annotation: null,
   }
