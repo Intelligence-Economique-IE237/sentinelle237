@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction, CookieOptions } from "express";
+import { HttpException } from "../utils/HttpExceptions";
 import AuthService from "../services/AuthService";
 
 const COOKIE_OPTIONS: CookieOptions = {
