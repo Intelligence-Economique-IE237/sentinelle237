@@ -176,13 +176,14 @@ export interface TimelineResponse {
 }
 
 export interface FluxArticle {
-  id: string
+  id_article: string
   titre: string
   lien: string
   description: string
   image: string | null
   date_publication: string
 }
+
 
 export interface CategorieFlux {
   id_categorie: string

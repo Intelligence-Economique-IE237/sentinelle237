@@ -155,7 +155,7 @@ const SECTION_META: Record<SelectedView["type"], SectionMetaEntry> = {
 
 function toDisplay(a: FluxArticle, feedId: string, feedName: string): DisplayArticle {
   return {
-    id_article: a.id,
+    id_article: a.id_article,
     feedId,
     feedName,
     title: a.titre,
@@ -698,7 +698,6 @@ export default function Dashboard() {
 
   async function toggleSavedForLater(id: string, e: React.MouseEvent) {
     e.stopPropagation()
-    console.log("[toggleSavedForLater] id reçu =", id, "| vue actuelle =", selected.type)
     const current = localFavoris[id] !== undefined ? localFavoris[id] : favoriIds.has(id)
     const next = !current
     setLocalFavoris((prev) => ({ ...prev, [id]: next }))
