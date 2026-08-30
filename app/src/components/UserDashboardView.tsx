@@ -109,7 +109,7 @@ export default function CommandCenterPage() {
               feeds.map((f) =>
                   getFluxArticles(f.id_flux, { limit: 50 }).then((arts) =>
                       arts.map((a) => ({
-                        id: a.id,
+                        id: a.id_article,
                         titre: a.titre,
                         feedName: f.nom,
                         publishedAt: a.date_publication,
