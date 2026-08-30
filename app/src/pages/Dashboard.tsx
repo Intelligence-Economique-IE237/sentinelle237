@@ -415,7 +415,7 @@ export default function Dashboard() {
   const allArticles = allArticlesData ?? []
 
 useEffect(() => {
-  const ids = allArticles.map((a) => a.id)
+  const ids = allArticles.map((a) => a.id_article)
   const uniqueIds = new Set(ids)
   console.log("total articles:", ids.length, "— IDs uniques:", uniqueIds.size)
   if (ids.length !== uniqueIds.size) {

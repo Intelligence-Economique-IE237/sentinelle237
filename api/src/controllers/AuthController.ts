@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction, CookieOptions } from "express";
+import { HttpException } from "../utils/HttpExceptions";
 import AuthService from "../services/AuthService";
 
 const COOKIE_OPTIONS: CookieOptions = {
@@ -25,13 +26,18 @@ export default class AuthController {
         }
     }
 
-    async verifyEmail(req: Request, res: Response, next: NextFunction) {
+    async verifyEmail(req: Request, res: Response) {
+        const { FRONTEND_ORIGINS } = process.env as { [key: string]: string };
+        const frontendUrl = FRONTEND_ORIGINS.split(",")[0].trim(); // prend la première origine si plusieurs
+        const { token } = req.query as { token: string };
+
         try {
-            const { token } = req.query as { token: string };
+            if (!token) throw new HttpException(400, "Token manquant");
             await this.authService.verifyEmail(token);
-            res.status(200).json({ message: "Email vérifié avec succès" });
+            res.redirect(`${frontendUrl}/login?verified=1`);
         } catch (err) {
-            next(err);
+            const message = err instanceof HttpException ? err.message : "Erreur lors de la vérification";
+            res.redirect(`${frontendUrl}/login?verified=0&erreur=${encodeURIComponent(message)}`);
         }
     }
 
