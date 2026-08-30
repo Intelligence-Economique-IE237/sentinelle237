@@ -1,4 +1,4 @@
-import { useCallback,useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import type React from "react"
 import {
   Gauge,
@@ -374,9 +374,6 @@ const gridStyle = { gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))"
 export default function Dashboard() {
   const [selected, setSelected] = useState<SelectedView>({ type: "today" })
 
-  const onToday = useCallback(() => {
-    setSelected({ type: "today" })
-  }, [])
   // const [selected, setSelected] = useState<SelectedView>({ type: "today" })
   const [openArticle, setOpenArticle] = useState<DisplayArticle | null>(null)
   const [displayArticle, setDisplayArticle] = useState<DisplayArticle | null>(null)
