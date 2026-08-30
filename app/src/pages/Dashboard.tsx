@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import type React from "react"
 import {
+  Gauge,
   AlertCircle,
   ArrowLeft,
   Bell,
@@ -49,7 +50,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/toast"
 import { useCachedFetch } from "@/hooks/useCachedFetch"
-import { getFavoris, getAnnotes, updateArticleAnnotation, updateArticleFavori } from "@/lib/api/articles"
+import { getFavoris, getAnnotes, updateArticleAnnotation, updateArticleFavori, updateArticleLu  } from "@/lib/api/articles"
 import {
   createAlerte,
   deleteAlerte,
@@ -86,7 +87,7 @@ import {
   updateDossier,
 } from "@/lib/api/dossiers"
 import type { Dossier, TimelineEntry } from "@/lib/api/types"
-
+import UserDashboard from "@/components/UserDashboardView"
 // --- Forme d'article unifiee pour l'affichage (peu importe la source) ---
 interface DisplayArticle {
   id_article: string
@@ -142,9 +143,9 @@ const SECTION_META: Record<SelectedView["type"], SectionMetaEntry> = {
     description: "Cours des devises et matieres premieres",
   },
   dashboard: {
-    icon: LineChart,
+    icon: Gauge,
     title: "Tableau de bord",
-    description: "Vue d'ensemble",
+    description: "Tableau de board",
   },
   feed: {
     icon: Rss,
@@ -372,6 +373,8 @@ const gridStyle = { gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))"
 
 export default function Dashboard() {
   const [selected, setSelected] = useState<SelectedView>({ type: "today" })
+
+  // const [selected, setSelected] = useState<SelectedView>({ type: "today" })
   const [openArticle, setOpenArticle] = useState<DisplayArticle | null>(null)
   const [displayArticle, setDisplayArticle] = useState<DisplayArticle | null>(null)
   const [noteDraft, setNoteDraft] = useState("")
@@ -410,6 +413,15 @@ export default function Dashboard() {
     2 * 60 * 1000
   )
   const allArticles = allArticlesData ?? []
+
+useEffect(() => {
+  const ids = allArticles.map((a) => a.id)
+  const uniqueIds = new Set(ids)
+  console.log("total articles:", ids.length, "— IDs uniques:", uniqueIds.size)
+  if (ids.length !== uniqueIds.size) {
+    console.warn("Des articles partagent le même id !", ids)
+  }
+}, [allArticles])
 
   const {
     data: feedArticlesRaw,
@@ -677,7 +689,7 @@ export default function Dashboard() {
 
   const counts = useMemo(
     () => ({
-      today: todayArticles.length,
+      today: todayArticles.filter((a) => !a.read).length,
       later: favorisTotal,
       annotated: annotesTotal,
       alertes: 0,
@@ -686,15 +698,30 @@ export default function Dashboard() {
     [todayArticles, favorisTotal, annotesTotal, dossiers]
   )
 
-  function toggleRead(id: string, e: React.MouseEvent) {
-    e.stopPropagation()
+async function toggleRead(id: string, e: React.MouseEvent) {
+  e.stopPropagation()
+  const current = readIds.has(id)
+  const next = !current
+
+  setReadIds((prev) => {
+    const updated = new Set(prev)
+    if (next) updated.add(id)
+    else updated.delete(id)
+    return updated
+  })
+
+  try {
+    await updateArticleLu(id, next)
+  } catch {
     setReadIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
+      const updated = new Set(prev)
+      if (current) updated.add(id)
+      else updated.delete(id)
+      return updated
     })
+    toast.add({ title: "Erreur", description: "Impossible de marquer l'article", type: "error" })
   }
+}
 
   async function toggleSavedForLater(id: string, e: React.MouseEvent) {
     e.stopPropagation()
@@ -743,10 +770,15 @@ export default function Dashboard() {
     }
   }
 
-  function handleOpenArticle(article: DisplayArticle) {
+  async function handleOpenArticle(article: DisplayArticle) {
     setOpenArticle(article)
     if (!readIds.has(article.id_article)) {
       setReadIds((prev) => new Set(prev).add(article.id_article))
+      try {
+        await updateArticleLu(article.id_article, true)
+      } catch {
+        
+      }
     }
   }
 
@@ -1143,6 +1175,8 @@ export default function Dashboard() {
             )
           ) : selected.type === "marches" ? (
             <MarchesView />
+            ) : selected.type === "dashboard" ? (
+            <UserDashboard />
           ) : selected.type === "today" ? (
             <div className="flex flex-col gap-4 p-4">
               <div className="grid content-start gap-4" style={gridStyle}>
@@ -1278,7 +1312,14 @@ export default function Dashboard() {
               )}
               <DialogHeader>
                 <div className="flex items-center gap-2">
-                  {displayArticle.feedName && <Badge variant="outline">{displayArticle.feedName}</Badge>}
+                  {displayArticle.feedName && (
+                    <Badge
+                      variant="outline"
+                      className="max-w-[140px] truncate sm:max-w-none"
+                    >
+                      {displayArticle.feedName}
+                    </Badge>
+                  )}
                   {displayArticle.publishedAt && (
                     <span className="text-xs text-muted-foreground">{formatDate(displayArticle.publishedAt)}</span>
                   )}

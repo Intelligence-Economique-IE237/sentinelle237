@@ -62,6 +62,7 @@ export interface Flux {
   createdAt: string
   updatedAt: string
   created_by: string
+  isEpingle: boolean
 }
 
 export interface AddFluxPayload {
@@ -182,6 +183,7 @@ export interface FluxArticle {
   description: string
   image: string | null
   date_publication: string
+  lu: boolean
 }
 
 

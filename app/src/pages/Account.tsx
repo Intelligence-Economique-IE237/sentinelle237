@@ -224,12 +224,52 @@ export default function Account() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center bg-muted/30 px-4 py-10">
-      <div className="w-full max-w-lg space-y-6">
+    <div className="relative min-h-screen overflow-hidden bg-muted/30">
+      
+      {/* Grille avec effet brouillard */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage: `
+            linear-gradient(
+              to right,
+              rgba(120, 120, 120, 0.18) 1px,
+              transparent 1px
+            ),
+            linear-gradient(
+              to bottom,
+              rgba(120, 120, 120, 0.18) 1px,
+              transparent 1px
+            )
+          `,
+          backgroundSize: "48px 48px",
+
+          maskImage:
+            "radial-gradient(ellipse 90% 70% at 50% 55%, black 5%, rgba(0,0,0,0.8) 35%, transparent 85%)",
+
+          WebkitMaskImage:
+            "radial-gradient(ellipse 90% 70% at 50% 55%, black 5%, rgba(0,0,0,0.8) 35%, transparent 85%)",
+        }}
+      />
+
+      {/* Brouillard lumineux */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 50% at 50% 25%, transparent 0%, hsl(var(--background) / 0.15) 45%, hsl(var(--background) / 0.8) 100%)",
+        }}
+      />
+
+      {/* Contenu */}
+      <div className="relative z-10 mx-auto w-full max-w-lg space-y-6 px-4 py-10">
         <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => navigate("/dashboard")}>
           <ArrowLeft className="h-4 w-4" />
           Retournez à votre veille
         </Button>
+
+        <Separator/> 
+        <p>Gérer votre compte sur Sentinelle237</p> 
 
         <div className="flex items-center gap-4">
           <Avatar className="h-16 w-16">

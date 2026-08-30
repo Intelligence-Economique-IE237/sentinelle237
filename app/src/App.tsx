@@ -7,7 +7,6 @@ import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
 import { AuthProvider } from './context/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
-import UserDashboardPage from './pages/UserDashboardPage'
 
 import './App.css'
 
@@ -54,14 +53,6 @@ function App() {
           element={
             <ProtectedRoute>
               <Admin />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/dashboard/overview"
-          element={
-            <ProtectedRoute>
-              <UserDashboardPage />
             </ProtectedRoute>
           }
         />

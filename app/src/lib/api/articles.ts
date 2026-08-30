@@ -42,3 +42,7 @@ export async function getAnnotes(params?: {
   const pagination = (obj?.pagination as Pagination) ?? DEFAULT_PAGINATION(params?.page, params?.limit, list.length)
   return { data: list, pagination }
 }
+
+export async function updateArticleLu(id: string, lu: boolean): Promise<void> {
+  await apiClient.patch(`/articles/${id}/lu`, { lu })
+}
