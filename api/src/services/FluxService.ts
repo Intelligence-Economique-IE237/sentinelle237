@@ -4,6 +4,7 @@ import ArticleRepository from "../repositories/ArticleRepository";
 import UserFluxRepository from "../repositories/UserFluxRepository";
 import CategorieFluxRepository from "../repositories/CategorieFluxRepository";
 import FluxEpingleRepository from "../repositories/FluxEpingleRepository";
+import ArticleInteractionRepository from "../repositories/ArticleInteractionRepository";
 import { FeedParserService, type ParsedFeed } from "./FeedParserService";
 import { TelegramService } from "./TelegramService";
 import { mlInferenceService } from "./MLInferenceService";
@@ -27,6 +28,7 @@ const categorieFluxRepository = new CategorieFluxRepository();
 const feedParserService = new FeedParserService();
 const telegramService = new TelegramService();
 const fluxEpingleRepository = new FluxEpingleRepository();
+const articleInteractionRepository = new ArticleInteractionRepository();
 
 type CrawlData = {
   lien_rss: string;
@@ -44,6 +46,7 @@ export default class FluxService {
   private readonly feedParserService: FeedParserService;
   private readonly telegramService: TelegramService;
   private readonly fluxEpingleRepository: FluxEpingleRepository;
+  private readonly articleInteractionRepository: ArticleInteractionRepository;
 
   constructor() {
     this.fluxRepository = fluxRepository;
@@ -53,6 +56,7 @@ export default class FluxService {
     this.feedParserService = feedParserService;
     this.telegramService = telegramService;
     this.fluxEpingleRepository = fluxEpingleRepository;
+    this.articleInteractionRepository = articleInteractionRepository;
   }
 
   private normalizeUrl(input: string): string {
@@ -139,7 +143,6 @@ export default class FluxService {
     if (data.length > 0) {
       await this.articleRepository.createMany(data);
 
-      // Classification + résumé en tâche de fond — n'échoue jamais bruyamment le crawl
       this.classifierArticlesEnArrierePlan(flux_id, data).catch((err) =>
           console.error("[classification]: erreur non bloquante:", err)
       );
@@ -269,8 +272,25 @@ export default class FluxService {
     const skip = (query.page - 1) * query.limit;
     const { articles, total } = await this.articleRepository.getByFluxId(id_flux, { skip, take: query.limit });
 
+    
+    const interactions = await this.articleInteractionRepository.getManyByUserAndArticles(
+        userId,
+        articles.map((a) => a.id_article)
+    );
+    const interactionByArticle = new Map(interactions.map((i) => [i.article_id, i]));
+
+    const articlesEnrichis = articles.map((a) => {
+      const interaction = interactionByArticle.get(a.id_article);
+      return {
+        ...a,
+        lu: interaction?.lu ?? false,
+        favori: interaction?.favori ?? false,
+        note: interaction?.note ?? null,
+      };
+    });
+
     return {
-      articles,
+      articles: articlesEnrichis,
       pagination: {
         total,
         page: query.page,

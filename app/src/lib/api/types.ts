@@ -177,7 +177,7 @@ export interface TimelineResponse {
 }
 
 export interface FluxArticle {
-  id: string
+  id_article: string
   titre: string
   lien: string
   description: string
@@ -185,6 +185,7 @@ export interface FluxArticle {
   date_publication: string
   lu: boolean
 }
+
 
 export interface CategorieFlux {
   id_categorie: string

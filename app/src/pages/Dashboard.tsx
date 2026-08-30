@@ -90,7 +90,7 @@ import type { Dossier, TimelineEntry } from "@/lib/api/types"
 import UserDashboard from "@/components/UserDashboardView"
 // --- Forme d'article unifiee pour l'affichage (peu importe la source) ---
 interface DisplayArticle {
-  id: string
+  id_article: string
   feedId: string
   feedName: string
   title: string
@@ -156,7 +156,7 @@ const SECTION_META: Record<SelectedView["type"], SectionMetaEntry> = {
 
 function toDisplay(a: FluxArticle, feedId: string, feedName: string): DisplayArticle {
   return {
-    id: a.id,
+    id_article: a.id_article,
     feedId,
     feedName,
     title: a.titre,
@@ -280,7 +280,7 @@ function ArticleCard({
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={(e) => onToggleRead(article.id, e)}
+            onClick={(e) => onToggleRead(article.id_article, e)}
             title={article.read ? "Marquer comme non lu" : "Marquer comme vu"}
           >
             {article.read ? (
@@ -294,7 +294,7 @@ function ArticleCard({
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={(e) => onToggleSaved(article.id, e)}
+            onClick={(e) => onToggleSaved(article.id_article, e)}
             title={article.savedForLater ? "Retirer de plus tard" : "A lire plus tard"}
           >
             {article.savedForLater ? (
@@ -305,8 +305,8 @@ function ArticleCard({
           </Button>
 
           <Popover
-            open={openNoteId === article.id}
-            onOpenChange={(open) => onOpenNoteChange(open ? article.id : null)}
+            open={openNoteId === article.id_article}
+            onOpenChange={(open) => onOpenNoteChange(open ? article.id_article : null)}
           >
             <PopoverTrigger
               render={
@@ -328,7 +328,7 @@ function ArticleCard({
                 onChange={(e) => onNoteDraftChange(e.target.value)}
                 rows={4}
               />
-              <Button size="sm" className="w-full" onClick={() => onSaveAnnotation(article.id)}>
+              <Button size="sm" className="w-full" onClick={() => onSaveAnnotation(article.id_article)}>
                 Enregistrer
               </Button>
             </PopoverContent>
@@ -462,7 +462,7 @@ useEffect(() => {
   const favorisAsDisplay: DisplayArticle[] = useMemo(
     () =>
       favoris.map((f) => ({
-        id: f.id_article,
+        id_article: f.id_article,
         feedId: "",
         feedName: "",
         title: f.titre,
@@ -490,8 +490,8 @@ useEffect(() => {
       while (true) {
         const res = await getFavoris({ page, limit })
         all = all.concat(res.data)
-        total = res.pagination.total // ← corrigé
-        if (all.length >= res.pagination.total || res.data.length === 0) break // ← corrigé
+        total = res.pagination.total
+        if (all.length >= res.pagination.total || res.data.length === 0) break
         page++
       }
       setFavoriIds(new Set(all.map((a) => a.id_article)))
@@ -519,14 +519,14 @@ useEffect(() => {
 
   useEffect(() => {
     getAnnotes({ page: 1, limit: 1 })
-        .then((res) => setAnnotesTotal(res.pagination.total)) // ← corrigé
-        .catch(() => {})
+      .then((res) => setAnnotesTotal(res.pagination.total))
+      .catch(() => {})
   }, [])
 
   const annotesAsDisplay: DisplayArticle[] = useMemo(
     () =>
       annotes.map((a) => ({
-        id: a.id_article,
+        id_article: a.id_article,
         feedId: "",
         feedName: "",
         title: a.titre,
@@ -548,11 +548,13 @@ useEffect(() => {
 
   function enrich(a: DisplayArticle): DisplayArticle {
     const savedForLater =
-      localFavoris[a.id] !== undefined ? localFavoris[a.id] : favoriIds.has(a.id) || a.savedForLater
+      localFavoris[a.id_article] !== undefined
+        ? localFavoris[a.id_article]
+        : favoriIds.has(a.id_article) || a.savedForLater
     return {
       ...a,
-      read: readIds.has(a.id),
-      annotation: localAnnotations[a.id] ?? favoriNotes[a.id] ?? a.annotation,
+      read: readIds.has(a.id_article),
+      annotation: localAnnotations[a.id_article] ?? favoriNotes[a.id_article] ?? a.annotation,
       savedForLater,
     }
   }
@@ -770,13 +772,12 @@ async function toggleRead(id: string, e: React.MouseEvent) {
 
   async function handleOpenArticle(article: DisplayArticle) {
     setOpenArticle(article)
-    if (!readIds.has(article.id)) {
-      setReadIds((prev) => new Set(prev).add(article.id))
+    if (!readIds.has(article.id_article)) {
+      setReadIds((prev) => new Set(prev).add(article.id_article))
       try {
-        await updateArticleLu(article.id, true)
+        await updateArticleLu(article.id_article, true)
       } catch {
-        // pas de rollback ici — l'article vient d'être ouvert, on le garde marqué lu
-        // même si l'appel réseau échoue ponctuellement
+        
       }
     }
   }
@@ -1194,7 +1195,7 @@ async function toggleRead(id: string, e: React.MouseEvent) {
                 )}
                 {todayPageItems.map((article) => (
                   <ArticleCard
-                    key={article.id}
+                    key={article.id_article}
                     article={article}
                     onOpen={handleOpenArticle}
                     onToggleRead={toggleRead}
@@ -1222,7 +1223,7 @@ async function toggleRead(id: string, e: React.MouseEvent) {
                 )}
                 {enrichedFavoris.map((article) => (
                   <ArticleCard
-                    key={article.id}
+                    key={article.id_article}
                     article={article}
                     onOpen={handleOpenArticle}
                     onToggleRead={toggleRead}
@@ -1250,7 +1251,7 @@ async function toggleRead(id: string, e: React.MouseEvent) {
                 )}
                 {enrichedAnnotes.map((article) => (
                   <ArticleCard
-                    key={article.id}
+                    key={article.id_article}
                     article={article}
                     onOpen={handleOpenArticle}
                     onToggleRead={toggleRead}
@@ -1279,7 +1280,7 @@ async function toggleRead(id: string, e: React.MouseEvent) {
                   <div className="grid content-start gap-4" style={gridStyle}>
                     {group.items.map((article) => (
                       <ArticleCard
-                        key={article.id}
+                        key={article.id_article}
                         article={article}
                         onOpen={handleOpenArticle}
                         onToggleRead={toggleRead}

@@ -37,7 +37,7 @@ export default class ArticleService {
             ...article,
             note: interaction?.note ?? null,
             favori: interaction?.favori ?? false,
-            lu: interaction?.lu ?? false, // ← ajouté
+            lu: interaction?.lu ?? false,
         };
     }
 
@@ -59,7 +59,7 @@ export default class ArticleService {
         });
 
         return {
-            articles: interactions.map((i) => ({ ...i.article, note: i.note, favori: i.favori })),
+            articles: interactions.map((i) => ({ ...i.article, note: i.note, favori: i.favori, lu: i.lu })), // ← lu ajouté
             pagination: {
                 total,
                 page: query.page,
@@ -68,6 +68,7 @@ export default class ArticleService {
             },
         };
     }
+
     async getAnnotes(userId: string, query: ListFavorisQuery) {
         const skip = (query.page - 1) * query.limit;
         const { interactions, total } = await this.articleInteractionRepository.getAnnotes(userId, {
@@ -76,12 +77,12 @@ export default class ArticleService {
         });
 
         return {
-            articles: interactions.map((i) => ({ ...i.article, note: i.note, favori: i.favori })),
+            articles: interactions.map((i) => ({ ...i.article, note: i.note, favori: i.favori, lu: i.lu })), // ← lu ajouté
             pagination: {
-            total,
-            page: query.page,
-            limit: query.limit,
-            totalPages: Math.max(Math.ceil(total / query.limit), 1),
+                total,
+                page: query.page,
+                limit: query.limit,
+                totalPages: Math.max(Math.ceil(total / query.limit), 1),
             },
         };
     }

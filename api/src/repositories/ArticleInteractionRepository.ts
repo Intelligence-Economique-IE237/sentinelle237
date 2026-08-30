@@ -63,4 +63,10 @@ export default class ArticleInteractionRepository {
             update: { lu },
         });
     }
+    async getManyByUserAndArticles(user_id: string, article_ids: string[]) {
+        if (article_ids.length === 0) return [];
+        return await this.db.articleInteraction.findMany({
+            where: { user_id, article_id: { in: article_ids } },
+        });
+    }
 }
