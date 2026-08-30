@@ -19,17 +19,17 @@ export async function getFavoris(params?: {
   return { data: list, pagination }
 }
 
-export async function getArticleDetail(id: string): Promise<ArticleDetail> {
-  const { data } = await apiClient.get<{ article: ArticleDetail }>(`/articles/${id}`)
+export async function getArticleDetail(id_article: string): Promise<ArticleDetail> {
+  const { data } = await apiClient.get<{ article: ArticleDetail }>(`/articles/${id_article}`)
   return data.article
 }
 
-export async function updateArticleAnnotation(id: string, note: string | null): Promise<void> {
-  await apiClient.patch(`/articles/${id}/annotation`, { note })
+export async function updateArticleAnnotation(id_article: string, note: string | null): Promise<void> {
+  await apiClient.patch(`/articles/${id_article}/annotation`, { note })
 }
 
-export async function updateArticleFavori(id: string, favori: boolean): Promise<void> {
-  await apiClient.patch(`/articles/${id}/favori`, { favori })
+export async function updateArticleFavori(id_article: string, favori: boolean): Promise<void> {
+  await apiClient.patch(`/articles/${id_article}/favori`, { favori })
 }
 
 export async function getAnnotes(params?: {
