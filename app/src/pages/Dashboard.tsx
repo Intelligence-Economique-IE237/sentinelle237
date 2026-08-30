@@ -50,7 +50,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/toast"
 import { useCachedFetch } from "@/hooks/useCachedFetch"
-import { getFavoris, getAnnotes, updateArticleAnnotation, updateArticleFavori, updateArticleLu  } from "@/lib/api/articles"
+import { getFavoris, getAnnotes, updateArticleAnnotation, updateArticleFavori, updateArticleLu } from "@/lib/api/articles"
 import {
   createAlerte,
   deleteAlerte,
@@ -88,6 +88,7 @@ import {
 } from "@/lib/api/dossiers"
 import type { Dossier, TimelineEntry } from "@/lib/api/types"
 import UserDashboard from "@/components/UserDashboardView"
+
 // --- Forme d'article unifiee pour l'affichage (peu importe la source) ---
 interface DisplayArticle {
   id_article: string
@@ -165,7 +166,7 @@ function toDisplay(a: FluxArticle, feedId: string, feedName: string): DisplayArt
     url: a.lien,
     publishedAt: a.date_publication,
     read: a.lu,
-    savedForLater: false,
+    savedForLater: a.favori,
     annotation: null,
   }
 }
@@ -216,7 +217,7 @@ function formatDate(iso: string) {
 interface ArticleCardProps {
   article: DisplayArticle
   onOpen: (article: DisplayArticle) => void
-  onToggleRead: (id: string, e: React.MouseEvent) => void
+  onToggleRead: (id: string, currentRead: boolean, e: React.MouseEvent) => void
   onToggleSaved: (id: string, e: React.MouseEvent) => void
   openNoteId: string | null
   onOpenNoteChange: (id: string | null) => void
@@ -280,7 +281,7 @@ function ArticleCard({
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={(e) => onToggleRead(article.id_article, e)}
+            onClick={(e) => onToggleRead(article.id_article, article.read, e)}
             title={article.read ? "Marquer comme non lu" : "Marquer comme vu"}
           >
             {article.read ? (
@@ -373,8 +374,6 @@ const gridStyle = { gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))"
 
 export default function Dashboard() {
   const [selected, setSelected] = useState<SelectedView>({ type: "today" })
-
-  // const [selected, setSelected] = useState<SelectedView>({ type: "today" })
   const [openArticle, setOpenArticle] = useState<DisplayArticle | null>(null)
   const [displayArticle, setDisplayArticle] = useState<DisplayArticle | null>(null)
   const [noteDraft, setNoteDraft] = useState("")
@@ -413,15 +412,6 @@ export default function Dashboard() {
     2 * 60 * 1000
   )
   const allArticles = allArticlesData ?? []
-
-useEffect(() => {
-  const ids = allArticles.map((a) => a.id_article)
-  const uniqueIds = new Set(ids)
-  console.log("total articles:", ids.length, "— IDs uniques:", uniqueIds.size)
-  if (ids.length !== uniqueIds.size) {
-    console.warn("Des articles partagent le même id !", ids)
-  }
-}, [allArticles])
 
   const {
     data: feedArticlesRaw,
@@ -541,8 +531,10 @@ useEffect(() => {
     [annotes]
   )
 
-  // --- Etat "vu" - TODO: pas de route backend documentee pour ca, reste client-only ---
-  const [readIds, setReadIds] = useState<Set<string>>(new Set())
+  // --- Surcharges locales — reflètent un clic immédiat en attendant le
+  // prochain refetch. Retombent sur la valeur serveur (a.read/a.savedForLater)
+  // quand aucune surcharge n'existe, plutôt que de l'ignorer entièrement.
+  const [localReadOverrides, setLocalReadOverrides] = useState<Record<string, boolean>>({})
   const [localAnnotations, setLocalAnnotations] = useState<Record<string, string | null>>({})
   const [localFavoris, setLocalFavoris] = useState<Record<string, boolean>>({})
 
@@ -551,9 +543,10 @@ useEffect(() => {
       localFavoris[a.id_article] !== undefined
         ? localFavoris[a.id_article]
         : favoriIds.has(a.id_article) || a.savedForLater
+    const read = localReadOverrides[a.id_article] !== undefined ? localReadOverrides[a.id_article] : a.read
     return {
       ...a,
-      read: readIds.has(a.id_article),
+      read,
       annotation: localAnnotations[a.id_article] ?? favoriNotes[a.id_article] ?? a.annotation,
       savedForLater,
     }
@@ -561,19 +554,19 @@ useEffect(() => {
 
   const enrichedAllArticles = useMemo(
     () => allArticles.map(enrich),
-    [allArticles, readIds, localAnnotations, localFavoris, favoriIds, favoriNotes]
+    [allArticles, localReadOverrides, localAnnotations, localFavoris, favoriIds, favoriNotes]
   )
   const enrichedFeedArticles = useMemo(
     () => feedArticles.map(enrich),
-    [feedArticles, readIds, localAnnotations, localFavoris, favoriIds, favoriNotes]
+    [feedArticles, localReadOverrides, localAnnotations, localFavoris, favoriIds, favoriNotes]
   )
   const enrichedFavoris = useMemo(
     () => favorisAsDisplay.map(enrich),
-    [favorisAsDisplay, readIds, localAnnotations, localFavoris, favoriIds, favoriNotes]
+    [favorisAsDisplay, localReadOverrides, localAnnotations, localFavoris, favoriIds, favoriNotes]
   )
   const enrichedAnnotes = useMemo(
     () => annotesAsDisplay.map(enrich),
-    [annotesAsDisplay, readIds, localAnnotations, localFavoris, favoriIds, favoriNotes]
+    [annotesAsDisplay, localReadOverrides, localAnnotations, localFavoris, favoriIds, favoriNotes]
   )
 
   // --- Alertes, mises en cache (1 min) ---
@@ -698,30 +691,18 @@ useEffect(() => {
     [todayArticles, favorisTotal, annotesTotal, dossiers]
   )
 
-async function toggleRead(id_article: string, e: React.MouseEvent) {
-  e.stopPropagation()
-  const current = readIds.has(id_article)
-  const next = !current
+  async function toggleRead(id_article: string, currentRead: boolean, e: React.MouseEvent) {
+    e.stopPropagation()
+    const next = !currentRead
+    setLocalReadOverrides((prev) => ({ ...prev, [id_article]: next }))
 
-  setReadIds((prev) => {
-    const updated = new Set(prev)
-    if (next) updated.add(id_article)
-    else updated.delete(id_article)
-    return updated
-  })
-
-  try {
-    await updateArticleLu(id_article, next)
-  } catch {
-    setReadIds((prev) => {
-      const updated = new Set(prev)
-      if (current) updated.add(id_article)
-      else updated.delete(id_article)
-      return updated
-    })
-    toast.add({ title: "Erreur", description: "Impossible de marquer l'article", type: "error" })
+    try {
+      await updateArticleLu(id_article, next)
+    } catch {
+      setLocalReadOverrides((prev) => ({ ...prev, [id_article]: currentRead }))
+      toast.add({ title: "Erreur", description: "Impossible de marquer l'article", type: "error" })
+    }
   }
-}
 
   async function toggleSavedForLater(id: string, e: React.MouseEvent) {
     e.stopPropagation()
@@ -772,12 +753,13 @@ async function toggleRead(id_article: string, e: React.MouseEvent) {
 
   async function handleOpenArticle(article: DisplayArticle) {
     setOpenArticle(article)
-    if (!readIds.has(article.id_article)) {
-      setReadIds((prev) => new Set(prev).add(article.id_article))
+    if (!article.read) {
+      setLocalReadOverrides((prev) => ({ ...prev, [article.id_article]: true }))
       try {
         await updateArticleLu(article.id_article, true)
       } catch {
-        
+        // pas de rollback ici — l'article vient d'être ouvert, on le garde marqué lu
+        // même si l'appel réseau échoue ponctuellement
       }
     }
   }
@@ -1175,7 +1157,7 @@ async function toggleRead(id_article: string, e: React.MouseEvent) {
             )
           ) : selected.type === "marches" ? (
             <MarchesView />
-            ) : selected.type === "dashboard" ? (
+          ) : selected.type === "dashboard" ? (
             <UserDashboard />
           ) : selected.type === "today" ? (
             <div className="flex flex-col gap-4 p-4">

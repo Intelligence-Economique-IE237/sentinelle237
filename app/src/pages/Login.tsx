@@ -15,7 +15,7 @@ export default function Login() {
         }}
       />
       <div className="relative z-10 w-full max-w-sm text-center">
-        <h1 className="font-medium text-lg">Déjà de retour ?</h1>
+        <h1 className="font-medium text-lg">Déjà de retour ?</h1></br>
         <LoginForm />
       </div>
     </div>
