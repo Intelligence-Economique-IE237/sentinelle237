@@ -134,7 +134,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
         {tempToken === null ? (
           <>
             <CardHeader className="text-center">
-              <CardTitle className="text-xl">Remplis tes informations</CardTitle>
+              <CardTitle className="text-sm">Remplis tes informations</CardTitle>
               <CardDescription>Pour te connecter à ton compte</CardDescription>
             </CardHeader>
             <CardContent>
