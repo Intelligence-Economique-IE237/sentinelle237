@@ -142,7 +142,7 @@ export const DIRECT_RSS_MAPPING: Record<string, EntreeMappingDirect> = {
     "malijet.com": { nom: "Malijet", lien_rss: "https://malijet.com/feed/", categorie: "generale", zone: Zone.afrique },
     "studiotamani.org": { nom: "Studio Tamani", lien_rss: "https://www.studiotamani.org/feed/", categorie: "generale", zone: Zone.afrique },
     "actuniger.com": { nom: "ActuNiger", lien_rss: "https://www.actuniger.com/index.php?format=feed&type=rss", categorie: "generale", zone: Zone.afrique },
-    "togofirst.com": { nom: "Togo First", lien_rss: "https://www.togofirst.com/rss.xml", categorie: "economie", categorie: "generale", zone: Zone.afrique },
+    "togofirst.com": { nom: "Togo First", lien_rss: "https://www.togofirst.com/rss.xml", categorie: "economie", zone: Zone.afrique },
     "republicoftogo.com": { nom: "Republic of Togo", lien_rss: "https://www.republicoftogo.com/rss.xml", categorie: "generale", zone: Zone.afrique },
     "icilome.com": { nom: "Ici Lomé", lien_rss: "https://icilome.com/feed/", categorie: "generale", zone: Zone.afrique },
     "banouto.bj": { nom: "Banouto", lien_rss: "https://www.banouto.bj/rss", categorie: "generale", zone: Zone.afrique },
