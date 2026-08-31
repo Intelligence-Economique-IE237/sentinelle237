@@ -1,8 +1,8 @@
 import Parser from "rss-parser";
 import { HttpException } from "../utils/HttpExceptions";
+import { DIRECT_RSS_MAPPING } from "../config/directRssMapping";
 
 const parser = new Parser();
-const BOT_USER_AGENT = "Sentinelle237Bot/1.0 (+https://sentinelle237.iecameroun.cm; contact@iecameroun.cm)";
 
 export type ParsedFeed = {
   title?: string;
@@ -35,6 +35,10 @@ const BROWSER_HEADERS = {
   "Upgrade-Insecure-Requests": "1",
 };
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function fetchWithTimeout(
     url: string,
     timeoutMs = 15000,
@@ -58,16 +62,17 @@ export class FeedParserService {
   private readonly youtubeApiKey: string | undefined;
 
   constructor() {
-    this.nitterInstances = [
-      process.env.NITTER_INSTANCE,
-      "https://xcancel.com",
-      "https://nitter.catsarch.com",
-      "https://nitter.tiekoetter.com",
-      "https://nitter.kareem.one",
-      "https://lightbrd.com",
-    ].filter(Boolean) as string[];
-
+    this.nitterInstances = [process.env.NITTER_INSTANCE, "https://xcancel.com"].filter(Boolean) as string[];
     this.youtubeApiKey = process.env.YOUTUBE_API_KEY;
+  }
+
+  // ── Validation permissive avant le parsing strict rss-parser ──
+  // Accepte tout ce qui RESSEMBLE à un flux (marqueurs textuels) avant de tenter le parsing
+  // strict — évite de rejeter des flux réels mais légèrement mal formés.
+  private ressembleAUnFlux(contentType: string, body: string): boolean {
+    const ctOk = /xml|rss|atom/i.test(contentType);
+    const bodyOk = /<rss|<feed|<channel/i.test(body.slice(0, 2000));
+    return ctOk || bodyOk;
   }
 
   async parseFeed(feedUrl: string): Promise<ParsedFeed> {
@@ -85,7 +90,14 @@ export class FeedParserService {
         );
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
       const xml = await res.text();
+      const contentType = res.headers.get("content-type") ?? "";
+
+      if (!this.ressembleAUnFlux(contentType, xml)) {
+        throw new Error("Le contenu ne ressemble pas à un flux RSS/Atom");
+      }
+
       return (await parser.parseString(xml)) as ParsedFeed;
     } catch (err) {
       if (err instanceof HttpException) throw err;
@@ -93,48 +105,65 @@ export class FeedParserService {
     }
   }
 
+  // Expose la résolution de hostname pour que FluxService puisse suggérer categorie/zone
+  // depuis DIRECT_RSS_MAPPING au moment de la création d'un flux.
+  extraireHostname(url: string): string | null {
+    try {
+      const normalized = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+      return new URL(normalized).hostname.replace(/^www\./, "");
+    } catch {
+      return null;
+    }
+  }
+
   async discoverFeedUrl(pageUrl: string): Promise<string> {
+    // ── Dictionnaire de correspondances directes, consulté en tout premier ──
+    // Zéro requête de découverte pour ces domaines connus et déjà validés.
+    const hostname = this.extraireHostname(pageUrl);
+    if (hostname && DIRECT_RSS_MAPPING[hostname]) {
+      const urlDirecte = DIRECT_RSS_MAPPING[hostname].lien_rss;
+      try {
+        await this.parseFeed(urlDirecte);
+        return urlDirecte;
+      } catch {
+        console.warn(`[feed-parser]: mapping direct cassé pour ${hostname}, bascule sur la découverte normale`);
+      }
+    }
+
+    // Un échec ici n'est JAMAIS fatal — retombe toujours vers le HTML/chemins communs
+    // au lieu d'arrêter tout le processus de découverte.
     if (this.looksLikeFeedUrl(pageUrl)) {
       try {
         await this.parseFeed(pageUrl);
         return pageUrl;
-      } catch (err) {
-        if (err instanceof HttpException) throw err;
-        throw new HttpException(422, this.explainFailure(err, true));
+      } catch {
+        console.warn(`[feed-parser]: échec sur l'URL fournie directement (${pageUrl}), tentative de repli...`);
+      }
+    } else {
+      try {
+        await this.parseFeed(pageUrl);
+        return pageUrl; // l'identifiant n'avait pas l'air d'un flux mais en était bien un
+      } catch {
+        /* pas un flux direct, continue normalement */
       }
     }
 
-    try {
-      await this.parseFeed(pageUrl);
-      return pageUrl;
-    } catch {
-      /* pas un flux direct */
-    }
-
-    let html: string;
-    let htmlBlocked = false;
+    let html: string | null = null;
     try {
       const res = await fetchWithTimeout(pageUrl);
-      if (res.status === 403 || res.status === 429) {
-        htmlBlocked = true;
-      } else if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      } else {
-        html = await res.text();
-      }
-    } catch (err) {
-      if (err instanceof HttpException) throw err;
-      htmlBlocked = true;
+      if (res.ok) html = await res.text();
+    } catch {
+      /* HTML inaccessible, on retombe quand même sur les chemins communs ci-dessous */
     }
 
-    if (!htmlBlocked && html!) {
+    if (html) {
       const feedUrl = this.extractFeedUrlFromHtml(html, pageUrl);
       if (feedUrl) {
         try {
           await this.parseFeed(feedUrl);
           return feedUrl;
         } catch {
-
+          /* lien découvert mort, continue vers les chemins communs */
         }
       }
     }
@@ -148,31 +177,16 @@ export class FeedParserService {
     for (const instance of this.nitterInstances) {
       const url = `${instance}/${clean}/rss`;
       try {
-        const res = await fetch(url, {
-          headers: { "User-Agent": BOT_USER_AGENT },
-          redirect: "follow",
-        });
-        if (!res.ok) continue;
-
-        const xml = await res.text();
-        if (xml.includes("not yet whitelisted")) continue;
-
-        const parsed = (await parser.parseString(xml)) as ParsedFeed;
+        await this.parseFeed(url);
         return url;
       } catch {
         continue;
       }
     }
 
-    throw new HttpException(
-        422,
-        "Aucune instance Nitter disponible pour ce compte Twitter/X (whitelist en attente ou instances indisponibles)."
-    );
+    throw new HttpException(422, "Aucune instance Nitter disponible pour ce compte Twitter/X. Réessaie plus tard.");
   }
 
-  /**
-   * YOUTUBE : résolution par channel_id, @handle, /user/ ou /c/
-   */
   async resolveYoutubeFeedUrl(channelUrl: string): Promise<string> {
     const normalized = channelUrl.replace(/\/$/, "");
 
@@ -187,20 +201,14 @@ export class FeedParserService {
 
       if (this.youtubeApiKey) {
         const channelId = await this.resolveHandleViaApi(handle, this.youtubeApiKey);
-        if (channelId) {
-          return `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
-        }
+        if (channelId) return `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
       }
 
       const channelId = await this.resolveHandleViaOembed(handle);
-      if (channelId) {
-        return `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
-      }
+      if (channelId) return `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
 
       const channelIdHtml = await this.resolveHandleViaHtml(handle);
-      if (channelIdHtml) {
-        return `https://www.youtube.com/feeds/videos.xml?channel_id=${channelIdHtml}`;
-      }
+      if (channelIdHtml) return `https://www.youtube.com/feeds/videos.xml?channel_id=${channelIdHtml}`;
 
       throw new HttpException(
           422,
@@ -220,8 +228,6 @@ export class FeedParserService {
         "URL YouTube non reconnue. Utilisez /channel/UC..., /@handle, /user/... ou collez directement l'URL du flux RSS."
     );
   }
-
-  // ─── Méthodes privées YouTube ───
 
   private async resolveHandleViaApi(handle: string, apiKey: string): Promise<string | null> {
     try {
@@ -269,8 +275,6 @@ export class FeedParserService {
     }
   }
 
-  // ─── Méthodes privées RSS classique ───
-
   private looksLikeFeedUrl(url: string): boolean {
     const lower = url.toLowerCase();
     const feedExts = [".xml", ".rss", ".atom", ".rdf", ".json"];
@@ -279,7 +283,7 @@ export class FeedParserService {
   }
 
   private async tryCommonFeedPaths(baseUrl: string): Promise<string> {
-    const parsed = new URL(baseUrl);
+    const parsed = new URL(/^https?:\/\//i.test(baseUrl) ? baseUrl : `https://${baseUrl}`);
     const origin = parsed.origin;
     const langMatch = parsed.pathname.match(/^\/(fr|en|es|ar|de|it)\//);
     const langPrefix = langMatch ? `/${langMatch[1]}` : "";
@@ -297,16 +301,26 @@ export class FeedParserService {
       "/atom.xml",
       "/feeds/posts/default",
       "/?feed=rss2",
-    ];
+    ].map((path) => new URL(path, origin).toString());
 
-    for (const path of candidates) {
-      const candidate = new URL(path, origin).toString();
-      try {
-        await this.parseFeed(candidate);
-        return candidate;
-      } catch {
-        continue;
-      }
+    const CONCURRENCE = 2;
+    for (let i = 0; i < candidates.length; i += CONCURRENCE) {
+      const lot = candidates.slice(i, i + CONCURRENCE);
+      const resultats = await Promise.all(
+          lot.map(async (candidate) => {
+            try {
+              await this.parseFeed(candidate);
+              return candidate;
+            } catch {
+              return null;
+            }
+          })
+      );
+
+      const trouve = resultats.find((r) => r !== null);
+      if (trouve) return trouve;
+
+      if (i + CONCURRENCE < candidates.length) await sleep(200);
     }
 
     throw new HttpException(
@@ -327,28 +341,20 @@ export class FeedParserService {
       const match = html.match(regex);
       if (match) {
         const discovered = match[1];
-        return discovered.startsWith("http")
-            ? discovered
-            : new URL(discovered, baseUrl).toString();
+        return discovered.startsWith("http") ? discovered : new URL(discovered, baseUrl).toString();
       }
     }
     return null;
   }
 
-  private explainFailure(err: unknown, isDirectFeed = false): string {
+  private explainFailure(err: unknown): string {
     const msg = err instanceof Error ? err.message : "";
     if (/403|forbidden/i.test(msg)) {
-      return isDirectFeed
-          ? "Ce flux RSS est inaccessible : le site bloque les requêtes automatisées (403)."
-          : "Ce site bloque les requêtes automatisées (403). Essaie de coller directement l'URL du flux RSS.";
+      return "Ce site bloque les requêtes automatisées. Essaie de coller directement l'URL du flux RSS.";
     }
     if (/timeout|abort|etimedout|econnrefused/i.test(msg)) {
-      return isDirectFeed
-          ? "Ce flux RSS est inaccessible (timeout). Le site est peut-être hors ligne ou bloqué depuis ton serveur."
-          : "Le site est inaccessible (timeout). Vérifie que le domaine est joignable depuis ton serveur.";
+      return "Le site est inaccessible (timeout). Vérifie que le domaine est joignable depuis ton serveur.";
     }
-    return isDirectFeed
-        ? "Impossible de lire ce flux RSS (format invalide ou inaccessible). Vérifie l'URL."
-        : "Impossible de lire ce flux RSS (format invalide ou inaccessible)";
+    return "Impossible de lire ce flux RSS (format invalide ou inaccessible)";
   }
 }
