@@ -329,9 +329,39 @@ export interface CoursMatiere {
   recorded_at: string
 }
 
+export type SourceIndice = "finnhub" | "twelvedata" | "brvm" | "bvmac"
+
+export interface CoursIndice {
+  code: string
+  nom: string
+  source: SourceIndice
+  prix: number
+  devise: string
+  variation_24h: number | null
+  recorded_at: string
+}
+
+// DashboardKpis existant — ajouter le champ indices
 export interface DashboardKpis {
   devises: CoursDevise[]
   matieres: CoursMatiere[]
+  indices: CoursIndice[]
+}
+
+export interface HistoriqueIndiceItem {
+  id_cours: string
+  code: string
+  nom: string
+  source: SourceIndice
+  prix: number
+  devise: string
+  variation_24h: number | null
+  recorded_at: string
+}
+
+export interface HistoriqueIndiceResponse {
+  historique: HistoriqueIndiceItem[]
+  pagination: { total: number; page: number; limit: number; totalPages: number }
 }
 
 export interface HistoriqueCoursItem {
