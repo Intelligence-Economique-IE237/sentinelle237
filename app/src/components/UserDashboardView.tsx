@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import type React from "react"
 import { useNavigate } from "react-router-dom"
 import {
-  AlertTriangle,
+  Bell,
   FolderSearch,
   Newspaper,
   PieChart as PieChartIcon,
@@ -33,7 +33,7 @@ import { AppSidebar, type SelectedView } from "@/components/app-sidebar"
 import { useCachedFetch } from "@/hooks/useCachedFetch"
 import { getAlertes, getAlerteResultats } from "@/lib/api/alerts"
 import { getFavoris, getAnnotes } from "@/lib/api/articles"
-import { getDossiers, getDossierTimeline } from "@/lib/api/dossiers"
+import { getDossiers } from "@/lib/api/dossiers"
 import { getCategoriesFlux, getFluxArticles, getMyFluxes } from "@/lib/api/feeds"
 import type { Alerte, AlerteResultat, CategorieFlux, Dossier, Flux } from "@/lib/api/types"
 
@@ -45,6 +45,7 @@ interface DisplayArticle {
   feedName: string
   publishedAt: string
   lien: string
+  lu: boolean
 }
 
 function isToday(iso: string) {
@@ -136,13 +137,14 @@ export default function UserDashboardView() {
           Promise.all(
               feeds.map((f) =>
                   getFluxArticles(f.id_flux, { limit: 50 }).then((arts) =>
-                      arts.map((a) => ({
-                        id: a.id_article,
-                        titre: a.titre,
-                        feedName: f.nom,
-                        publishedAt: a.date_publication,
-                        lien: a.lien,
-                      }))
+                    arts.map((a) => ({
+                      id: a.id_article,
+                      titre: a.titre,
+                      feedName: f.nom,
+                      publishedAt: a.date_publication,
+                      lien: a.lien,
+                      lu: a.lu,
+                    }))
                   )
               )
           ).then((results) => results.flat()),
@@ -152,11 +154,15 @@ export default function UserDashboardView() {
   const allArticles = allArticlesData ?? []
 
   const todayArticles = useMemo(
-      () =>
-          allArticles
-              .filter((a) => isToday(a.publishedAt))
-              .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()),
-      [allArticles]
+    () =>
+      allArticles
+        .filter((a) => isToday(a.publishedAt) && a.lu === false)
+        .sort(
+          (a, b) =>
+            new Date(b.publishedAt).getTime() -
+            new Date(a.publishedAt).getTime()
+        ),
+    [allArticles]
   )
 
   const [favorisTotal, setFavorisTotal] = useState<number | null>(null)
@@ -188,23 +194,23 @@ export default function UserDashboardView() {
         .finally(() => setLoadingUnreadResults(false))
   }, [alertes])
 
-  const [signalFortCount, setSignalFortCount] = useState<number | null>(null)
+  // const [ setSignalFortCount] = useState<number | null>(null)
 
-  useEffect(() => {
-    if (dossiers.length === 0) {
-      setSignalFortCount(0)
-      return
-    }
-    Promise.all(
-        dossiers.slice(0, 5).map((d) =>
-            getDossierTimeline(d.id_dossier, { page: 1, limit: 30 }).then(
-                (res) => res.timeline.filter((e) => e.signalFort).length
-            )
-        )
-    )
-        .then((counts) => setSignalFortCount(counts.reduce((a, b) => a + b, 0)))
-        .catch(() => setSignalFortCount(0))
-  }, [dossiers])
+  // useEffect(() => {
+  //   if (dossiers.length === 0) {
+  //     setSignalFortCount(0)
+  //     return
+  //   }
+  //   Promise.all(
+  //       dossiers.slice(0, 5).map((d) =>
+  //           getDossierTimeline(d.id_dossier, { page: 1, limit: 30 }).then(
+  //               (res) => res.timeline.filter((e) => e.signalFort).length
+  //           )
+  //       )
+  //   )
+  //       .then((counts) => setSignalFortCount(counts.reduce((a, b) => a + b, 0)))
+  //       .catch(() => setSignalFortCount(0))
+  // }, [dossiers])
 
   const categoryDistribution = useMemo(() => {
     const counts: Record<string, { value: number; color: string }> = {}
@@ -286,8 +292,8 @@ export default function UserDashboardView() {
                 <Card>
                   <CardHeader>
                     <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-red-600" />
-                      <CardTitle className="text-base">À traiter</CardTitle>
+                      <Bell className="h-4 w-4 text-red-600" />
+                      <CardTitle className="text-base">Vos alertes / À traiter</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-2">
@@ -312,7 +318,7 @@ export default function UserDashboardView() {
                         </a>
                     ))}
                     <div className="flex items-center justify-between pt-1 text-sm">
-                      <span className="text-muted-foreground">Articles non lus (session)</span>
+                      <span className="text-muted-foreground">Articles non lus</span>
                       <Badge variant="secondary">{unreadTodayCount}</Badge>
                     </div>
                   </CardContent>
@@ -344,12 +350,6 @@ export default function UserDashboardView() {
                           <span className="min-w-0 flex-1 truncate">{d.nom}</span>
                         </button>
                     ))}
-                    <div className="flex items-center justify-between pt-1 text-sm">
-                      <span className="text-muted-foreground">Signaux forts détectés</span>
-                      <Badge variant={signalFortCount ? "destructive" : "secondary"}>
-                        {signalFortCount ?? "—"}
-                      </Badge>
-                    </div>
                   </CardContent>
                 </Card>
               </div>

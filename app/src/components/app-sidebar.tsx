@@ -615,13 +615,13 @@ export function AppSidebar({ selected, onSelect, counts }: AppSidebarProps) {
                             })()}
 
                             <span
-                              className="min-w-0 flex-1 overflow-hidden whitespace-nowrap"
-                              style={{
-                                maskImage:
-                                  "linear-gradient(to right, black calc(100% - 28px), transparent)",
-                                WebkitMaskImage:
-                                  "linear-gradient(to right, black calc(100% - 28px), transparent)",
-                              }}
+                              className="min-w-0 flex-1 overflow-hidden whitespace-nowrap pr-8"
+                                style={{
+                                  maskImage:
+                                    "linear-gradient(to right, black calc(100% - 28px), transparent)",
+                                  WebkitMaskImage:
+                                    "linear-gradient(to right, black calc(100% - 28px), transparent)",
+                                }}
                               title={feed.nom}
                             >
                               {feed.nom}
@@ -634,7 +634,14 @@ export function AppSidebar({ selected, onSelect, counts }: AppSidebarProps) {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="absolute right-1 top-1/2 z-10 h-6 w-6 -translate-y-1/2 bg-sidebar opacity-0 transition-opacity group-hover/feed-item:opacity-100 data-popup-open:opacity-100"
+                                  className="
+                                          absolute right-1 top-1/2 z-10 h-7 w-7 -translate-y-1/2
+                                          bg-sidebar
+                                          opacity-100
+                                          transition-opacity
+                                          md:opacity-0
+                                          md:group-hover/feed-item:opacity-100
+                                          data-popup-open:opacity-100"
                                 >
                                   <MoreVertical className="h-3.5 w-3.5" />
                                 </Button>
@@ -714,13 +721,13 @@ export function AppSidebar({ selected, onSelect, counts }: AppSidebarProps) {
                               )
                             })()}
                             <span
-                              className="min-w-0 flex-1 overflow-hidden whitespace-nowrap"
-                              style={{
-                                maskImage:
-                                  "linear-gradient(to right, black calc(100% - 56px), transparent 100%)",
-                                WebkitMaskImage:
-                                  "linear-gradient(to right, black calc(100% - 56px), transparent 100%)",
-                              }}
+                              className="min-w-0 flex-1 overflow-hidden whitespace-nowrap pr-8"
+                                style={{
+                                  maskImage:
+                                    "linear-gradient(to right, black calc(100% - 28px), transparent)",
+                                  WebkitMaskImage:
+                                    "linear-gradient(to right, black calc(100% - 28px), transparent)",
+                                }}
                               title={feed.nom}
                             >
                               {feed.nom}
@@ -733,7 +740,14 @@ export function AppSidebar({ selected, onSelect, counts }: AppSidebarProps) {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="absolute right-1 top-1/2 z-10 h-6 w-6 -translate-y-1/2 bg-sidebar opacity-0 group-hover/feed-item:opacity-100"
+                                  className="        
+                                    absolute right-1 top-1/2 z-10 h-7 w-7 -translate-y-1/2
+                                    bg-sidebar
+                                    opacity-100
+                                    transition-opacity
+                                    md:opacity-0
+                                    md:group-hover/feed-item:opacity-100
+                                    data-popup-open:opacity-100"
                                 >
                                   <MoreVertical className="h-3.5 w-3.5" />
                                 </Button>
