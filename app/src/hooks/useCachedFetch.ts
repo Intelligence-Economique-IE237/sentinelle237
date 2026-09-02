@@ -1,4 +1,3 @@
-// src/hooks/useCachedFetch.ts
 import { useCallback, useEffect, useState } from "react"
 import { useCache } from "@/context/CacheContext"
 

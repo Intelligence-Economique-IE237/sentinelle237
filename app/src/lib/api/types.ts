@@ -184,6 +184,7 @@ export interface FluxArticle {
   image: string | null
   date_publication: string
   lu: boolean
+  favori: boolean
 }
 
 

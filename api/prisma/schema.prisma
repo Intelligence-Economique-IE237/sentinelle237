@@ -338,6 +338,19 @@ model CoursDevise {
   @@index([paire, recorded_at])
   @@map("cours_devises")
 }
+model CoursIndiceBoursier {
+  id_cours      String   @id @default(uuid())
+  code          String
+  nom           String
+  source        String 
+  prix          Float
+  devise        String   @default("points")
+  variation_24h Float?
+  recorded_at   DateTime @default(now())
+
+  @@index([code, recorded_at])
+  @@map("cours_indices_boursiers")
+}
 
 model ModelePdf {
   id_modele      String          @id @default(uuid())

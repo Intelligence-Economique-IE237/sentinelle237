@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import DashboardService from "../services/DashboardService";
 import { PAIRES_DEVISES_SUIVIES, METAUX_SUIVIS } from "../config/dashboardConstants";
+const { DASHBOARD_INDICES_US_CRON, DASHBOARD_INDICES_NON_US_CRON, DASHBOARD_BRVM_CRON, DASHBOARD_BVMAC_CRON } = process.env as { [key: string]: string };
 
 const { DASHBOARD_REFRESH_CRON, DASHBOARD_OIL_REFRESH_CRON } = process.env as { [key: string]: string };
 
@@ -44,4 +45,24 @@ export function startDashboardJobs() {
         }
     });
     console.log(`[dashboard-refresh-oil]: planifié (${oilSchedule})`);
+
+    cron.schedule(DASHBOARD_INDICES_US_CRON || "*/10 * * * *", async () => {
+        const result = await dashboardService.refreshIndicesUS();
+        console.log(`[dashboard-indices-us]: ${result.ok} actualisés, ${result.echec} échecs`);
+    });
+
+    cron.schedule(DASHBOARD_INDICES_NON_US_CRON || "*/30 * * * *", async () => {
+        const result = await dashboardService.refreshIndicesNonUS();
+        console.log(`[dashboard-indices-non-us]: ${result.ok} actualisés, ${result.echec} échecs`);
+    });
+
+    cron.schedule(DASHBOARD_BRVM_CRON || "0 17 * * 1-5", async () => {
+        const result = await dashboardService.refreshBrvm();
+        console.log(`[dashboard-brvm]: ${result.ok} indices actualisés`);
+    });
+
+    cron.schedule(DASHBOARD_BVMAC_CRON || "0 18 * * 1-5", async () => {
+        const result = await dashboardService.refreshBvmac();
+        console.log(`[dashboard-bvmac]: ${result.ok ? "actualisé" : "échec"}`);
+    });
 }

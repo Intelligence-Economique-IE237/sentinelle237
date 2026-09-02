@@ -114,12 +114,12 @@ export default function SignUp() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div className="space-y-2">
-              <Label htmlFor="pseudo">Nom</Label>
+              <Label htmlFor="pseudo">Pseudo</Label>
               <Input
                 id="pseudo"
                 value={values.pseudo}
                 onChange={(e) => updateField("pseudo", e.target.value)}
-                placeholder="john doe"
+                placeholder="johndoe"
               />
               {errors.pseudo && (
                 <p className="text-sm text-destructive">{errors.pseudo}</p>

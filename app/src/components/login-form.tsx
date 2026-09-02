@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import type React from "react"
 import { Link, useNavigate } from "react-router-dom"
+import { Eye, EyeOff } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -41,6 +42,7 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
   const [values, setValues] = useState<LoginFormValues>({ mail: "", password: "" })
   const [errors, setErrors] = useState<Partial<Record<keyof LoginFormValues, string | null>>>({})
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   // Étape 2 : code TOTP, uniquement si le compte a la double authentification activée
   const [tempToken, setTempToken] = useState<string | null>(null)
@@ -132,8 +134,8 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
         {tempToken === null ? (
           <>
             <CardHeader className="text-center">
-              <CardTitle className="text-xl">Bon retour</CardTitle>
-              <CardDescription>Connecte-toi à ton compte</CardDescription>
+              <CardTitle className="text-sm">Remplis tes informations</CardTitle>
+              <CardDescription>Pour te connecter à ton compte</CardDescription>
             </CardHeader>
             <CardContent>
               {verificationMessage && (
@@ -162,12 +164,23 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
 
                   <Field>
                     <FieldLabel htmlFor="password">Mot de passe</FieldLabel>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={values.password}
-                      onChange={(e) => updateField("password", e.target.value)}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        value={values.password}
+                        onChange={(e) => updateField("password", e.target.value)}
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground transition-colors hover:text-foreground"
+                        aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                     {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
                   </Field>
 

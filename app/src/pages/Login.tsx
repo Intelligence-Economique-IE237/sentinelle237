@@ -14,7 +14,8 @@ export default function Login() {
           WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 40%, black 20%, transparent 75%)",
         }}
       />
-      <div className="relative z-10 w-full max-w-sm">
+      <div className="relative z-10 w-full max-w-sm text-center">
+        <h1 className="font-medium text-lg gap-2">Déjà de retour ?</h1>
         <LoginForm />
       </div>
     </div>
