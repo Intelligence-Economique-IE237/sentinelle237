@@ -364,6 +364,20 @@ export interface HistoriqueIndiceResponse {
   pagination: { total: number; page: number; limit: number; totalPages: number }
 }
 
+export interface HistoriqueDeviseItem {
+  id_cours: string
+  paire: string
+  taux: number
+  variation_24h: number | null
+  recorded_at: string
+}
+ 
+export interface HistoriqueDeviseResponse {
+  historique: HistoriqueDeviseItem[]
+  pagination: { total: number; page: number; limit: number; totalPages: number }
+}
+
+
 export interface HistoriqueCoursItem {
   id_cours: string
   matiere: MatierePremiere
