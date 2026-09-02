@@ -50,4 +50,15 @@ export default class DashboardController {
             handleZodError(err, next);
         }
     }
+
+    async getIndiceHistorique(req: Request, res: Response, next: NextFunction) {
+        try {
+            const query = historiqueQuerySchema.parse(req.query);
+            const code = req.params.code as string;
+            const result = await this.dashboardService.getIndiceHistorique(code, query);
+            res.status(200).json(result);
+        } catch (err) {
+            handleZodError(err, next);
+        }
+    }
 }
