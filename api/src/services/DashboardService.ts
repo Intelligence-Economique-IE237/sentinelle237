@@ -5,11 +5,11 @@ import { CurrencyRateService } from "./CurrencyRateService";
 import { CommodityService } from "./CommodityService";
 import { PAIRES_DEVISES_SUIVIES, METAUX_SUIVIS, PETROLE_SUIVI } from "../config/dashboardConstants";
 import { FinnhubService } from "./FinnhubService";
-import { TwelveDataService } from "./TwelveDataService";
+import { SerpApiFinanceService } from "./SerpApiFinanceService";
 import { BrvmScraperService } from "./BrvmScraperService";
 import { BvmacScraperService } from "./BvmacScraperService";
 import CoursIndiceBoursierRepository from "../repositories/CoursIndiceBoursierRepository";
-import { INDICES_US_FINNHUB, INDICES_NON_US_TWELVEDATA, INDICES_BRVM, BVMAC_INDEX, TOUS_LES_CODES_INDICES } from "../config/indicesConstants";
+import { INDICES_US_FINNHUB, INDICES_NON_US_SERPAPI, BVMAC_INDEX, TOUS_LES_CODES_INDICES } from "../config/indicesConstants";
 import type { HistoriqueQuery } from "../validations/DashboardValidations";
 
 const { OILPRICEAPI_MONTHLY_QUOTA } = process.env as { [key: string]: string };
@@ -22,7 +22,7 @@ const currencyRateService = new CurrencyRateService();
 const commodityService = new CommodityService();
 const coursIndiceRepository = new CoursIndiceBoursierRepository();
 const finnhubService = new FinnhubService();
-const twelveDataService = new TwelveDataService();
+const serpApiFinanceService = new SerpApiFinanceService();
 const brvmScraperService = new BrvmScraperService();
 const bvmacScraperService = new BvmacScraperService();
 
@@ -189,25 +189,25 @@ export default class DashboardService {
         return { total: PETROLE_SUIVI.length, refreshed, quotaExhausted: false };
     }
 
-    async refreshIndicesUS() {
+    async refreshIndicesUS(this: any) {
         let ok = 0, echec = 0;
         try {
             const symbols = INDICES_US_FINNHUB.map((i) => i.symbol);
             const quotes = await finnhubService.getQuotes(symbols);
 
             for (const indice of INDICES_US_FINNHUB) {
-                const quote = quotes.get(indice.symbol);
-                if (!quote) { echec++; continue; }
+            const quote = quotes.get(indice.symbol);
+            if (!quote) { echec++; continue; }
 
-                await this.coursIndiceRepository.create({
-                    code: indice.code,
-                    nom: indice.nom,
-                    source: "finnhub",
-                    prix: quote.close,
-                    devise: "points",
-                    variation_24h: quote.percentChange,
-                });
-                ok++;
+            await this.coursIndiceRepository.create({
+                code: indice.code,
+                nom: indice.nom,
+                source: "finnhub",
+                prix: quote.close,
+                devise: "USD",
+                variation_24h: quote.percentChange,
+            });
+            ok++;
             }
         } catch (err) {
             console.error("[dashboard-indices-us]: échec:", err instanceof Error ? err.message : err);
@@ -216,25 +216,25 @@ export default class DashboardService {
         return { ok, echec };
     }
 
-    async refreshIndicesNonUS() {
+    async refreshIndicesNonUS(this: any) {
         let ok = 0, echec = 0;
         try {
-            const symbols = INDICES_NON_US_TWELVEDATA.map((i) => i.symbol);
-            const quotes = await twelveDataService.getQuotes(symbols);
+            const tickers = INDICES_NON_US_SERPAPI.map((i) => i.ticker);
+            const quotes = await serpApiFinanceService.getQuotes(tickers);
 
-            for (const indice of INDICES_NON_US_TWELVEDATA) {
-                const quote = quotes.get(indice.symbol);
-                if (!quote) { echec++; continue; }
+            for (const indice of INDICES_NON_US_SERPAPI) {
+            const quote = quotes.get(indice.ticker);
+            if (!quote) { echec++; continue; }
 
-                await this.coursIndiceRepository.create({
-                    code: indice.code,
-                    nom: indice.nom,
-                    source: "twelvedata",
-                    prix: quote.close,
-                    devise: "points",
-                    variation_24h: quote.percent_change ? parseFloat(quote.percent_change) : null,
-                });
-                ok++;
+            await this.coursIndiceRepository.create({
+                code: indice.code,
+                nom: indice.nom,
+                source: "serpapi",
+                prix: quote.prix,
+                devise: "points",
+                variation_24h: quote.variationPct,
+            });
+            ok++;
             }
         } catch (err) {
             console.error("[dashboard-indices-non-us]: échec:", err instanceof Error ? err.message : err);
@@ -243,18 +243,18 @@ export default class DashboardService {
         return { ok, echec };
     }
 
-    async refreshBrvm() {
+    async refreshBrvm(this: any) {
         try {
             const indices = await brvmScraperService.getIndices();
             for (const indice of indices) {
-                await this.coursIndiceRepository.create({
-                    code: indice.code,
-                    nom: indice.nom,
-                    source: "brvm",
-                    prix: indice.valeur,
-                    devise: "points",
-                    variation_24h: indice.variation,
-                });
+            await this.coursIndiceRepository.create({
+                code: indice.code,
+                nom: indice.nom,
+                source: "brvm",
+                prix: indice.valeur,
+                devise: "points",
+                variation_24h: indice.variation,
+            });
             }
             this.invalidateKpisCache();
             return { ok: indices.length };
@@ -264,7 +264,7 @@ export default class DashboardService {
         }
     }
 
-    async refreshBvmac() {
+    async refreshBvmac(this: any) {
         try {
             const { valeur } = await bvmacScraperService.getIndex();
 
@@ -273,12 +273,12 @@ export default class DashboardService {
             const variation = previous ? ((valeur - previous.prix) / previous.prix) * 100 : null;
 
             await this.coursIndiceRepository.create({
-                code: BVMAC_INDEX.code,
-                nom: BVMAC_INDEX.nom,
-                source: "bvmac",
-                prix: valeur,
-                devise: "points",
-                variation_24h: variation,
+            code: BVMAC_INDEX.code,
+            nom: BVMAC_INDEX.nom,
+            source: "bvmac",
+            prix: valeur,
+            devise: "points",
+            variation_24h: variation,
             });
             this.invalidateKpisCache();
             return { ok: true };
@@ -288,7 +288,7 @@ export default class DashboardService {
         }
     }
 
-    async getIndiceHistorique(code: string, query: HistoriqueQuery) {
+    async getIndiceHistorique(this: any, code: string, query: any) {
         const skip = (query.page - 1) * query.limit;
         const { historique, total } = await this.coursIndiceRepository.getHistory(code, { skip, take: query.limit });
         return {
