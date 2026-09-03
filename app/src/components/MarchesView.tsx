@@ -2,7 +2,14 @@ import { useMemo, useState } from "react"
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Minus } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -40,6 +47,11 @@ const MATIERE_LABELS: Record<MatierePremiere, string> = {
   petrole_brent: "Pétrole Brent",
 }
 
+// Codes rafraîchis fréquemment (10 min, marché US) — tous les autres
+// indices sont désormais à clôture unique quotidienne (BRVM, BVMAC, et
+// les indices étrangers via serpapi, limités par quota API).
+const FREQUENT_INDICE_CODES = new Set(["SPX", "DJI", "IXIC"])
+
 function formatVariation(v: number | null) {
   if (v === null) return { label: "—", color: "text-muted-foreground", Icon: Minus }
   if (v > 0) return { label: `+${v.toFixed(2)}%`, color: "text-green-600", Icon: ArrowUp }
@@ -56,6 +68,48 @@ type HistoriqueTarget =
   | { kind: "matiere"; value: MatierePremiere }
   | { kind: "devise"; value: string }
   | { kind: "indice"; value: string; nom: string }
+
+// Carte dans le style du bloc officiel shadcn "section-cards" (dashboard-01) :
+// CardDescription (libellé) + gros chiffre (CardTitle) + CardFooter (variation
+// + horodatage). Cliquable pour ouvrir l'historique.
+function MarketCard({
+  label,
+  value,
+  unit,
+  variation,
+  timestamp,
+  note,
+  onClick,
+}: {
+  label: string
+  value: string
+  unit?: string
+  variation: number | null
+  timestamp: string
+  note?: string
+  onClick: () => void
+}) {
+  const { label: varLabel, color, Icon } = formatVariation(variation)
+  return (
+    <Card className="@container/card cursor-pointer transition-colors hover:bg-accent" onClick={onClick}>
+      <CardHeader>
+        <CardDescription>{label}</CardDescription>
+        <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+          {value}
+          {unit && <span className="ml-1 text-sm font-normal text-muted-foreground">{unit}</span>}
+        </CardTitle>
+      </CardHeader>
+      <CardFooter className="flex-col items-start gap-1.5 text-sm">
+        <div className={`flex items-center gap-1 ${color}`}>
+          <Icon className="h-3.5 w-3.5" />
+          {varLabel}
+        </div>
+        <div className="text-xs text-muted-foreground">{formatDate(timestamp)}</div>
+        {note && <div className="text-[11px] italic text-muted-foreground">{note}</div>}
+      </CardFooter>
+    </Card>
+  )
+}
 
 export function MarchesView() {
   const [kpisError, setKpisError] = useState(false)
@@ -113,15 +167,15 @@ export function MarchesView() {
   }, [data])
 
   return (
-    <div className="space-y-6">
+    <div className="@container/main space-y-6">
       <MarketTicker items={tickerItems} />
 
-      <div className="space-y-6 p-4">
+      <div className="flex flex-col gap-4 px-4 py-4 md:gap-6 md:py-6">
         <div>
           <h2 className="text-lg font-semibold">Marchés</h2>
           <p className="text-sm text-muted-foreground">
-            Devises, matières premières et indices — mise à jour toutes les 15 min (métaux/devises),
-            8h (pétrole), 10-30 min (indices US/Europe) ou 1x/jour (BRVM/BVMAC)
+            Devises et matières premières mises à jour toutes les 15 min (8h pour le pétrole) — indices
+            US (SPX/DJI/IXIC) toutes les 10 min, tous les autres indices à clôture unique quotidienne
           </p>
         </div>
 
@@ -134,104 +188,70 @@ export function MarchesView() {
           <>
             <section className="space-y-2">
               <h3 className="text-xs font-semibold text-muted-foreground">Devises</h3>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {data.devises.map((d) => {
-                  const { label, color, Icon } = formatVariation(d.variation_24h)
-                  return (
-                    <Card
-                      key={d.paire}
-                      className="cursor-pointer transition-colors hover:bg-accent"
-                      onClick={() => setTarget({ kind: "devise", value: d.paire })}
-                    >
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">{d.paire}</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-xl font-semibold">{d.taux.toLocaleString("fr-FR")}</p>
-                        <div className={`flex items-center gap-1 text-xs ${color}`}>
-                          <Icon className="h-3 w-3" />
-                          {label}
-                        </div>
-                        <p className="mt-1 text-[11px] text-muted-foreground">{formatDate(d.recorded_at)}</p>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
+              <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+                {data.devises.map((d) => (
+                  <MarketCard
+                    key={d.paire}
+                    label={d.paire}
+                    value={d.taux.toLocaleString("fr-FR")}
+                    variation={d.variation_24h}
+                    timestamp={d.recorded_at}
+                    onClick={() => setTarget({ kind: "devise", value: d.paire })}
+                  />
+                ))}
               </div>
             </section>
 
             <section className="space-y-2">
               <h3 className="text-xs font-semibold text-muted-foreground">Matières premières</h3>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {data.matieres.map((m) => {
-                  const { label, color, Icon } = formatVariation(m.variation_24h)
-                  return (
-                    <Card
-                      key={m.matiere}
-                      className="cursor-pointer transition-colors hover:bg-accent"
-                      onClick={() => setTarget({ kind: "matiere", value: m.matiere })}
-                    >
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">
-                          {MATIERE_LABELS[m.matiere]}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-xl font-semibold">
-                          {m.prix.toLocaleString("fr-FR")}{" "}
-                          <span className="text-xs font-normal text-muted-foreground">{m.devise}</span>
-                        </p>
-                        <div className={`flex items-center gap-1 text-xs ${color}`}>
-                          <Icon className="h-3 w-3" />
-                          {label}
-                        </div>
-                        <p className="mt-1 text-[11px] text-muted-foreground">{formatDate(m.recorded_at)}</p>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
+              <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+                {data.matieres.map((m) => (
+                  <MarketCard
+                    key={m.matiere}
+                    label={MATIERE_LABELS[m.matiere]}
+                    value={m.prix.toLocaleString("fr-FR")}
+                    unit={m.devise}
+                    variation={m.variation_24h}
+                    timestamp={m.recorded_at}
+                    onClick={() => setTarget({ kind: "matiere", value: m.matiere })}
+                  />
+                ))}
               </div>
             </section>
 
-            {indicesByZone.map(({ zone, items }) => (
-              <section key={zone} className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xs font-semibold text-muted-foreground">Indices — {zone}</h3>
-                  {items.some((ix) => ix.source === "brvm" || ix.source === "bvmac") && (
-                    <Badge variant="outline" className="text-[10px]">
-                      1 point / jour ouvré
-                    </Badge>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  {items.map((ix) => {
-                    const { label, color, Icon } = formatVariation(ix.variation_24h)
-                    return (
-                      <Card
+            {indicesByZone.map(({ zone, items }) => {
+              const hasDaily = items.some((ix) => !FREQUENT_INDICE_CODES.has(ix.code))
+              return (
+                <section key={zone} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xs font-semibold text-muted-foreground">Indices — {zone}</h3>
+                    {hasDaily && (
+                      <Badge variant="outline" className="text-[10px]">
+                        Clôture unique quotidienne
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+                    {items.map((ix) => (
+                      <MarketCard
                         key={ix.code}
-                        className="cursor-pointer transition-colors hover:bg-accent"
+                        label={ix.nom}
+                        value={ix.prix.toLocaleString("fr-FR")}
+                        unit={ix.devise}
+                        variation={ix.variation_24h}
+                        timestamp={ix.recorded_at}
+                        note={
+                          ix.source === "finnhub"
+                            ? "Prix d'un ETF répliquant l'indice, pas la valeur officielle"
+                            : undefined
+                        }
                         onClick={() => setTarget({ kind: "indice", value: ix.code, nom: ix.nom })}
-                      >
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-sm font-medium">{ix.nom}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-xl font-semibold">
-                            {ix.prix.toLocaleString("fr-FR")}{" "}
-                            <span className="text-xs font-normal text-muted-foreground">{ix.devise}</span>
-                          </p>
-                          <div className={`flex items-center gap-1 text-xs ${color}`}>
-                            <Icon className="h-3 w-3" />
-                            {label}
-                          </div>
-                          <p className="mt-1 text-[11px] text-muted-foreground">{formatDate(ix.recorded_at)}</p>
-                        </CardContent>
-                      </Card>
-                    )
-                  })}
-                </div>
-              </section>
-            ))}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )
+            })}
           </>
         )}
 
@@ -315,8 +335,8 @@ function HistoriqueDialog({
           ? target.nom
           : ""
 
-  const isDailyOnly =
-    target?.kind === "indice" && (target.value.startsWith("BRVM") || target.value.startsWith("BVMAC"))
+  // Tout est à clôture unique quotidienne sauf les 3 indices US (finnhub)
+  const isDailyOnly = target?.kind === "indice" && !FREQUENT_INDICE_CODES.has(target.value)
 
   return (
     <Dialog
@@ -336,7 +356,7 @@ function HistoriqueDialog({
           <DialogTitle>{title} — Historique</DialogTitle>
           <DialogDescription>
             {isDailyOnly
-              ? "Un point par jour ouvré — marché fermé le week-end et les jours fériés."
+              ? "Clôture unique quotidienne — pas de nouvelle valeur avant le prochain cycle programmé."
               : "Cours enregistrés au fil du temps"}
           </DialogDescription>
         </DialogHeader>

@@ -329,7 +329,7 @@ export interface CoursMatiere {
   recorded_at: string
 }
 
-export type SourceIndice = "finnhub" | "twelvedata" | "brvm" | "bvmac"
+export type SourceIndice = "finnhub" | "serpapi" | "brvm" | "bvmac"
 
 export interface CoursIndice {
   code: string
