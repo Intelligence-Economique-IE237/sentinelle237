@@ -261,6 +261,7 @@ export function AppSidebar({ selected, onSelect, counts }: AppSidebarProps) {
       await subscribeToFlux(s.id_flux)
       await refreshFeeds()
       setSuggestionsCatalog((prev) => prev.filter((x) => x.id_flux !== s.id_flux))
+      setDialogOpen(false)
       toast.add({ title: "Abonné", description: s.nom, type: "success" })
     } catch {
       toast.add({ title: "Erreur", description: "Impossible de suivre ce flux", type: "error" })
