@@ -1,15 +1,9 @@
-import { Check } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { useState } from "react"
+import { ArrowUpRight, Check } from "lucide-react"
+import { MButton, MDialog, MEmpty, MPill, MSkeleton } from "@/components/mira/mira"
+import { cn } from "@/lib/utils"
 import type { Alerte, AlerteResultat } from "@/lib/api/types"
-import { useEffect, useState } from "react"
+
 interface AlertResultsDialogProps {
   alerte: Alerte | null
   results: AlerteResultat[] | undefined
@@ -18,93 +12,59 @@ interface AlertResultsDialogProps {
   onMarkRead: (resultatId: string) => void
 }
 
-export function AlertResultsDialog({
-  alerte,
-  results,
-  loading = false,
-  onOpenChange,
-  onMarkRead,
-}: AlertResultsDialogProps) {
-  // Garde la dernière alerte/résultats connus, pour que le contenu reste
-  // affiché pendant l'animation de fermeture au lieu de disparaître d'un coup
-  const [displayAlerte, setDisplayAlerte] = useState<Alerte | null>(alerte)
-  const [displayResults, setDisplayResults] = useState<AlerteResultat[]>(results ?? [])
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })
+}
 
-  useEffect(() => {
-    if (alerte) {
-      setDisplayAlerte(alerte)
-      setDisplayResults(results ?? [])
-    }
-  }, [alerte, results])
-
-  function formatDate(iso: string) {
-    return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })
+export function AlertResultsDialog({ alerte, results, loading = false, onOpenChange, onMarkRead }: AlertResultsDialogProps) {
+  // Garde la dernière alerte affichée pendant l'animation de fermeture
+  const [shown, setShown] = useState<{ alerte: Alerte; results: AlerteResultat[] } | null>(null)
+  if (alerte && (shown?.alerte !== alerte || shown.results !== (results ?? shown.results))) {
+    setShown({ alerte, results: results ?? [] })
   }
+  const list = shown?.results ?? []
 
   return (
-    <Dialog open={!!alerte} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[80vh] flex-col overflow-hidden sm:max-w-lg">
-        {displayAlerte && (
-          <>
-            <DialogHeader className="shrink-0">
-              <DialogTitle>{displayAlerte.mot_cle}</DialogTitle>
-              <DialogDescription>
-                {displayResults.length} résultat{displayResults.length !== 1 ? "s" : ""}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
-              {loading && (
-                <p className="py-6 text-center text-sm text-muted-foreground">Chargement...</p>
+    <MDialog
+      open={!!alerte}
+      onOpenChange={onOpenChange}
+      className="max-w-lg"
+      title={shown?.alerte.mot_cle ?? ""}
+      description={loading ? "Chargement des résultats…" : `${list.length} résultat${list.length !== 1 ? "s" : ""}`}
+    >
+      <div className="-mx-2 flex max-h-[55svh] flex-col gap-2 overflow-y-auto px-2">
+        {loading && Array.from({ length: 4 }, (_, i) => <MSkeleton key={i} className="h-16 rounded-2xl" />)}
+        {!loading && list.length === 0 && <MEmpty className="py-8">Aucun résultat pour cette alerte.</MEmpty>}
+        {!loading &&
+          list.map((r) => (
+            <div
+              key={r.id_resultat}
+              className={cn("flex items-start gap-2 rounded-2xl bg-m-surface-2 py-3 pr-2 pl-4", r.lu && "opacity-55")}
+            >
+              <a href={r.lien} target="_blank" rel="noopener noreferrer" className="group min-w-0 flex-1">
+                <span className="flex items-start gap-1.5 text-[14px] leading-snug font-medium group-hover:underline group-hover:underline-offset-4">
+                  <span className="flex-1">{r.titre}</span>
+                  <ArrowUpRight className="mt-0.5 size-3.5 shrink-0 text-m-muted" />
+                </span>
+                <span className="mt-1.5 flex items-center gap-2">
+                  <MPill tone={r.source === "flux" ? "lime" : "white"}>{r.source === "flux" ? "Flux suivi" : "Recherche web"}</MPill>
+                  <span className="font-mono text-[11px] text-m-soft">{formatDate(r.date_publication)}</span>
+                </span>
+              </a>
+              {!r.lu && (
+                <MButton
+                  variant="white"
+                  size="icon-sm"
+                  aria-label="Marquer comme lu"
+                  title="Marquer comme lu"
+                  onClick={() => onMarkRead(r.id_resultat)}
+                >
+                  <Check />
+                </MButton>
               )}
-              {!loading && displayResults.length === 0 && (
-                <p className="py-6 text-center text-sm text-muted-foreground">
-                  Aucun résultat pour cette alerte
-                </p>
-              )}
-              {!loading &&
-                displayResults.map((r) => (
-                  <div
-                    key={r.id_resultat}
-                    className={
-                      r.lu
-                        ? "flex items-start gap-2 rounded-lg border p-3 opacity-60"
-                        : "flex items-start gap-2 rounded-lg border p-3"
-                    }
-                  >
-                    <div className="flex-1">
-                      
-                      <a  href={r.lien}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm font-medium hover:underline"
-                      >
-                        {r.titre}
-                      </a>
-                      <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                        <Badge variant="outline" className="h-5 px-1.5 text-xs">
-                          {r.source === "flux" ? "Flux suivi" : "Recherche web"}
-                        </Badge>
-                        <span>{formatDate(r.date_publication)}</span>
-                      </div>
-                    </div>
-                    {!r.lu && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 shrink-0"
-                        onClick={() => onMarkRead(r.id_resultat)}
-                        title="Marquer comme lu"
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
             </div>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
+          ))}
+      </div>
+    </MDialog>
   )
 }

@@ -1,43 +1,42 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import type React from "react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { MButton, MDialog, MField, MInput, MTextarea } from "@/components/mira/mira"
 import type { Dossier } from "@/lib/api/types"
 
 const emptyForm = { nom: "", description: "" }
+type DossierFormValues = typeof emptyForm
 
 interface DossierFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   editingDossier: Dossier | null
-  onSubmit: (values: typeof emptyForm) => Promise<void> | void
+  onSubmit: (values: DossierFormValues) => Promise<void> | void
 }
 
-export function DossierFormDialog({
-  open,
-  onOpenChange,
+export function DossierFormDialog({ open, onOpenChange, editingDossier, onSubmit }: DossierFormDialogProps) {
+  return (
+    <MDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={editingDossier ? "Modifier le dossier" : "Nouveau dossier"}
+      description="Regroupe des flux et des alertes liés à une même enquête."
+    >
+      <DossierForm key={`${editingDossier?.id_dossier ?? "new"}-${open}`} editingDossier={editingDossier} onSubmit={onSubmit} />
+    </MDialog>
+  )
+}
+
+function DossierForm({
   editingDossier,
   onSubmit,
-}: DossierFormDialogProps) {
-  const [form, setForm] = useState(emptyForm)
+}: {
+  editingDossier: Dossier | null
+  onSubmit: (values: DossierFormValues) => Promise<void> | void
+}) {
+  const [form, setForm] = useState<DossierFormValues>(() =>
+    editingDossier ? { nom: editingDossier.nom, description: editingDossier.description ?? "" } : emptyForm
+  )
   const [saving, setSaving] = useState(false)
-
-  useEffect(() => {
-    if (editingDossier) {
-      setForm({ nom: editingDossier.nom, description: editingDossier.description ?? "" })
-    } else {
-      setForm(emptyForm)
-    }
-  }, [editingDossier, open])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -45,47 +44,34 @@ export function DossierFormDialog({
     setSaving(true)
     try {
       await onSubmit(form)
+    } catch {
+      // l'erreur est déjà affichée en toast par le parent
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{editingDossier ? "Modifier le dossier" : "Nouveau dossier"}</DialogTitle>
-          <DialogDescription>
-            Regroupe des flux et des alertes liés à une même enquête
-          </DialogDescription>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="nom">Nom du dossier</Label>
-            <Input
-              id="nom"
-              value={form.nom}
-              onChange={(e) => setForm((prev) => ({ ...prev, nom: e.target.value }))}
-              placeholder="Sécurité frontalière Nord"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Description (optionnel)</Label>
-            <Textarea
-              id="description"
-              value={form.description}
-              onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-              rows={3}
-            />
-          </div>
-
-          <Button type="submit" disabled={saving} className="w-full">
-            {saving ? "Enregistrement..." : editingDossier ? "Enregistrer" : "Créer le dossier"}
-          </Button>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <MField label="Nom du dossier" htmlFor="dossier-nom">
+        <MInput
+          id="dossier-nom"
+          value={form.nom}
+          onChange={(e) => setForm((prev) => ({ ...prev, nom: e.target.value }))}
+          placeholder="Sécurité frontalière Nord"
+        />
+      </MField>
+      <MField label="Description" hint="(optionnel)" htmlFor="dossier-description">
+        <MTextarea
+          id="dossier-description"
+          value={form.description}
+          onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+          rows={3}
+        />
+      </MField>
+      <MButton type="submit" disabled={saving || !form.nom.trim()} className="mt-1 w-full">
+        {saving ? "Enregistrement…" : editingDossier ? "Enregistrer" : "Créer le dossier"}
+      </MButton>
+    </form>
   )
 }

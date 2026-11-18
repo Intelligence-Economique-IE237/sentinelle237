@@ -1,10 +1,10 @@
 import { useState } from "react"
 import { Pencil, Search, Trash2 } from "lucide-react"
-import { toast } from "@/components/ui/toast"
+import { toast } from "@/components/mira/toast-manager"
 import { useCachedFetch } from "@/hooks/useCachedFetch"
 import { deleteUser, getUsers, updateUser } from "@/lib/api/admin"
 import { ApiError } from "@/lib/api/client"
-import type { AdminUser, AdminUserUpdatePayload, UserRole } from "@/lib/api/types"
+import { USER_OFFRES, type AdminUser, type AdminUserUpdatePayload, type UserRole } from "@/lib/api/types"
 import {
   MAvatar,
   MButton,
@@ -20,7 +20,7 @@ import {
   MSelect,
   MSkeleton,
   MSwitch,
-} from "@/components/admin/mira"
+} from "@/components/mira/mira"
 import { cn } from "@/lib/utils"
 
 const PAGE_SIZE = 20
@@ -73,9 +73,25 @@ export function AdminUsersTab() {
   const [deletingUser, setDeletingUser] = useState<AdminUser | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  const [verifyingId, setVerifyingId] = useState<string | null>(null)
+
   function openEdit(user: AdminUser) {
     setEditingUser(user)
-    setEditForm({ role: user.role, activated: user.activated, offre: user.offre })
+    setEditForm({ role: user.role, activated: user.activated, verified: user.verified, offre: user.offre })
+  }
+
+  async function handleQuickVerify(user: AdminUser) {
+    setVerifyingId(user.id_user)
+    try {
+      await updateUser(user.id_user, { verified: true })
+      toast.add({ title: "Email vérifié", description: user.mail, type: "success" })
+      await refresh()
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Impossible de vérifier l'email"
+      toast.add({ title: "Erreur", description: message, type: "error" })
+    } finally {
+      setVerifyingId(null)
+    }
   }
 
   async function handleSaveEdit() {
@@ -216,10 +232,23 @@ export function AdminUsersTab() {
                     <MPill tone={user.activated ? "lime" : "peach"}>{user.activated ? "Actif" : "Inactif"}</MPill>
                   </td>
                   <td className={cn(TD, "hidden sm:table-cell")}>
-                    <span className="flex items-center gap-1.5 text-[12px] text-m-soft">
-                      <MDot className={user.verified ? "bg-m-green" : "bg-m-orange"} />
-                      {user.verified ? "Oui" : "Non"}
-                    </span>
+                    {user.verified ? (
+                      <span className="flex items-center gap-1.5 text-[12px] text-m-soft">
+                        <MDot className="bg-m-green" />
+                        Oui
+                      </span>
+                    ) : (
+                      <MButton
+                        variant="lime"
+                        size="sm"
+                        className="h-7 px-3 text-[12px]"
+                        disabled={verifyingId === user.id_user}
+                        onClick={() => handleQuickVerify(user)}
+                        title={`Marquer ${user.mail} comme vérifié`}
+                      >
+                        {verifyingId === user.id_user ? "…" : "Vérifier"}
+                      </MButton>
+                    )}
                   </td>
                   <td className={cn(TD, "text-right")}>
                     <div className="flex justify-end gap-1">
@@ -253,7 +282,7 @@ export function AdminUsersTab() {
         open={!!editingUser}
         onOpenChange={(open) => !open && setEditingUser(null)}
         title={`Modifier ${editingUser?.pseudo ?? ""}`}
-        description="Rôle, statut et offre de cet utilisateur."
+        description="Rôle, offre, statut et vérification de l’email."
         footer={
           <>
             <MButton variant="light" onClick={() => setEditingUser(null)} disabled={saving}>
@@ -275,11 +304,13 @@ export function AdminUsersTab() {
               className="w-full rounded-2xl"
             />
           </MField>
-          <MField label="Offre" htmlFor="offre">
-            <MInput
-              id="offre"
-              value={editForm.offre ?? ""}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, offre: e.target.value }))}
+          <MField label="Offre">
+            <MSelect
+              ariaLabel="Offre"
+              value={editForm.offre ?? USER_OFFRES[0]}
+              onChange={(v) => setEditForm((prev) => ({ ...prev, offre: v }))}
+              options={USER_OFFRES.map((o) => ({ value: o, label: o.charAt(0).toUpperCase() + o.slice(1) }))}
+              className="w-full rounded-2xl"
             />
           </MField>
           <label
@@ -294,6 +325,20 @@ export function AdminUsersTab() {
               id="activated"
               checked={editForm.activated ?? false}
               onChange={(checked) => setEditForm((prev) => ({ ...prev, activated: checked }))}
+            />
+          </label>
+          <label
+            htmlFor="verified"
+            className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl bg-m-surface-2 px-4 py-3"
+          >
+            <span>
+              <span className="block text-sm font-medium">Email vérifié</span>
+              <span className="block text-[12px] text-m-soft">Valide l’adresse sans attendre le lien envoyé par mail.</span>
+            </span>
+            <MSwitch
+              id="verified"
+              checked={editForm.verified ?? false}
+              onChange={(checked) => setEditForm((prev) => ({ ...prev, verified: checked }))}
             />
           </label>
         </div>

@@ -1,13 +1,6 @@
 import { useState } from "react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Bell, Rss } from "lucide-react"
+import { MButton, MDialog, MEmpty, MSegmented } from "@/components/mira/mira"
 import type { Alerte, Flux } from "@/lib/api/types"
 
 interface LinkToDossierDialogProps {
@@ -28,110 +21,76 @@ export function LinkToDossierDialog({
   onOpenChange,
   availableAlertes,
   availableFeeds,
-  linkedAlerteIds = new Set(),
-  linkedFluxIds = new Set(),
+  linkedAlerteIds,
+  linkedFluxIds,
   onLinkAlerte,
   onUnlinkAlerte,
   onLinkFlux,
   onUnlinkFlux,
 }: LinkToDossierDialogProps) {
+  const [tab, setTab] = useState<"alertes" | "flux">("alertes")
   const [pendingId, setPendingId] = useState<string | null>(null)
 
-  async function handleAlerteClick(id: string) {
+  async function toggle(id: string, linked: boolean, link: (id: string) => Promise<void> | void, unlink: (id: string) => Promise<void> | void) {
     setPendingId(id)
     try {
-      if (linkedAlerteIds.has(id)) {
-        await onUnlinkAlerte(id)
-      } else {
-        await onLinkAlerte(id)
-      }
+      await (linked ? unlink(id) : link(id))
     } finally {
       setPendingId(null)
     }
   }
 
-  async function handleFluxClick(id: string) {
-    setPendingId(id)
-    try {
-      if (linkedFluxIds.has(id)) {
-        await onUnlinkFlux(id)
-      } else {
-        await onLinkFlux(id)
-      }
-    } finally {
-      setPendingId(null)
-    }
-  }
+  const rows =
+    tab === "alertes"
+      ? availableAlertes.map((a) => ({
+          id: a.id_alerte,
+          label: a.mot_cle,
+          linked: linkedAlerteIds.has(a.id_alerte),
+          onClick: () => toggle(a.id_alerte, linkedAlerteIds.has(a.id_alerte), onLinkAlerte, onUnlinkAlerte),
+        }))
+      : availableFeeds.map((f) => ({
+          id: f.id_flux,
+          label: f.nom,
+          linked: linkedFluxIds.has(f.id_flux),
+          onClick: () => toggle(f.id_flux, linkedFluxIds.has(f.id_flux), onLinkFlux, onUnlinkFlux),
+        }))
+  const Icon = tab === "alertes" ? Bell : Rss
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Lier au dossier</DialogTitle>
-          <DialogDescription>
-            Choisis une alerte ou un flux déjà suivi à rattacher à ce dossier
-          </DialogDescription>
-        </DialogHeader>
-
-        <Tabs defaultValue="alertes">
-          <TabsList className="w-full">
-            <TabsTrigger value="alertes" className="flex-1">
-              Alertes
-            </TabsTrigger>
-            <TabsTrigger value="flux" className="flex-1">
-              Flux
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="alertes" className="max-h-72 space-y-2 overflow-y-auto pt-2">
-            {availableAlertes.length === 0 && (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                Aucune alerte disponible
-              </p>
-            )}
-            {availableAlertes.map((a) => {
-              const isLinked = linkedAlerteIds.has(a.id_alerte)
-              return (
-                <div key={a.id_alerte} className="flex items-center justify-between rounded-md border p-2">
-                  <span className="text-sm">{a.mot_cle}</span>
-                  <Button
-                    size="sm"
-                    variant={isLinked ? "destructive" : "outline"}
-                    disabled={pendingId === a.id_alerte}
-                    onClick={() => handleAlerteClick(a.id_alerte)}
-                  >
-                    {isLinked ? "Délier" : "Lier"}
-                  </Button>
-                </div>
-              )
-            })}
-          </TabsContent>
-
-          <TabsContent value="flux" className="max-h-72 space-y-2 overflow-y-auto pt-2">
-            {availableFeeds.length === 0 && (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                Aucun flux disponible
-              </p>
-            )}
-            {availableFeeds.map((f) => {
-              const isLinked = linkedFluxIds.has(f.id_flux)
-              return (
-                  <div key={f.id_flux} className="flex items-center justify-between rounded-md border p-2">
-                    <span className="text-sm">{f.nom}</span>
-                    <Button
-                        size="sm"
-                        variant={isLinked ? "destructive" : "outline"}
-                        disabled={pendingId === f.id_flux}
-                        onClick={() => handleFluxClick(f.id_flux)}
-                    >
-                      {isLinked ? "Délier" : "Lier"}
-                    </Button>
-                  </div>
-              )
-            })}
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+    <MDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Lier au dossier"
+      description="Choisis une alerte ou un flux déjà suivi à rattacher à ce dossier."
+    >
+      <MSegmented
+        value={tab}
+        onChange={setTab}
+        className="w-full"
+        itemClassName="flex-1"
+        items={[
+          { value: "alertes", label: "Alertes" },
+          { value: "flux", label: "Flux" },
+        ]}
+      />
+      <div className="-mx-2 flex max-h-72 flex-col gap-2 overflow-y-auto px-2">
+        {rows.length === 0 && <MEmpty className="py-8">{tab === "alertes" ? "Aucune alerte disponible" : "Aucun flux disponible"}</MEmpty>}
+        {rows.map((r) => (
+          <div key={r.id} className="flex items-center gap-3 rounded-2xl bg-m-surface-2 py-1.5 pr-1.5 pl-4">
+            <Icon className="size-4 shrink-0 text-m-muted" />
+            <span className="min-w-0 flex-1 truncate text-[14px]">{r.label}</span>
+            <MButton
+              size="sm"
+              variant={r.linked ? "danger" : "dark"}
+              disabled={pendingId === r.id}
+              className="h-8 px-3.5 text-[12px]"
+              onClick={r.onClick}
+            >
+              {r.linked ? "Délier" : "Lier"}
+            </MButton>
+          </div>
+        ))}
+      </div>
+    </MDialog>
   )
 }

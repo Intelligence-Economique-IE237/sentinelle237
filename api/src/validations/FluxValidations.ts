@@ -40,6 +40,12 @@ export const listMyFluxQuerySchema = z.object({
 });
 export type ListMyFluxQuery = z.infer<typeof listMyFluxQuerySchema>;
 
+// Mise à jour d'un flux par un administrateur (actuellement : la zone géographique)
+export const updateFluxByAdminSchema = z.object({
+  zone: z.nativeEnum(Zone),
+});
+export type UpdateFluxByAdminInput = z.infer<typeof updateFluxByAdminSchema>;
+
 export const epingleSchema = z.object({
   epingle: z.boolean(),
 });

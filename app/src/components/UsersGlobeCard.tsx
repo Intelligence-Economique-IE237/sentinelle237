@@ -2,7 +2,7 @@ import { useMemo } from "react"
 import { UserGlobe, type GlobeMarker } from "@/components/UserGlobe"
 import { getCountryCoordinates } from "@/lib/countryCoordinates"
 import type { AdminUser } from "@/lib/api/types"
-import { MCard, MCardHeader, MEmpty, MSkeleton } from "@/components/admin/mira"
+import { MCard, MCardHeader, MEmpty, MSkeleton } from "@/components/mira/mira"
 import { cn } from "@/lib/utils"
 
 // Constantes de module : des tableaux recréés à chaque rendu relanceraient le globe.

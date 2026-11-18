@@ -60,6 +60,7 @@ export const updateUserByAdminSchema = z.object({
     ville: z.string().min(1).optional(),
     role: z.nativeEnum(Role).optional(),
     activated: z.boolean().optional(),
+    verified: z.boolean().optional(),
     offre: z.nativeEnum(Offre).optional(),
 });
 export type UpdateUserByAdminInput = z.infer<typeof updateUserByAdminSchema>;

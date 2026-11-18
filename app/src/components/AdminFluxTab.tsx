@@ -1,8 +1,9 @@
 import { useState } from "react"
 import { Rss, Upload } from "lucide-react"
-import { toast } from "@/components/ui/toast"
+import { toast } from "@/components/mira/toast-manager"
 import { useCachedFetch } from "@/hooks/useCachedFetch"
-import { getAllFluxAdmin, importOpml } from "@/lib/api/admin"
+import { getAllFluxAdmin, importOpml, updateFluxAdmin } from "@/lib/api/admin"
+import { FLUX_ZONES, type AdminFluxItem, type FluxZone } from "@/lib/api/types"
 import { ApiError } from "@/lib/api/client"
 import {
   MButton,
@@ -16,9 +17,10 @@ import {
   MPagination,
   MPill,
   MSegmented,
+  MSelect,
   MSkeleton,
   MTextarea,
-} from "@/components/admin/mira"
+} from "@/components/mira/mira"
 import { cn } from "@/lib/utils"
 
 const PAGE_SIZE = 20
@@ -136,7 +138,9 @@ export function AdminFluxTab() {
                       {item.type}
                     </MPill>
                   </td>
-                  <td className={cn(TD, "hidden text-m-body capitalize sm:table-cell")}>{item.zone}</td>
+                  <td className={cn(TD, "hidden sm:table-cell")}>
+                    <ZoneSelect item={item} onUpdated={refresh} />
+                  </td>
                   <td className={cn(TD, "hidden md:table-cell")}>
                     <span className="flex items-center gap-2 font-mono text-[12px] text-m-strong">
                       <MDot className={freshnessDot(item.last_crawled_at)} />
@@ -162,6 +166,42 @@ export function AdminFluxTab() {
 
       <ImportOpmlDialog open={importOpen} onOpenChange={setImportOpen} onImported={refresh} />
     </>
+  )
+}
+
+const ZONE_OPTIONS = FLUX_ZONES.map((z) => ({ value: z, label: z.charAt(0).toUpperCase() + z.slice(1) }))
+
+/** Sélecteur de zone en ligne : l'enregistrement part dès le choix. */
+function ZoneSelect({ item, onUpdated }: { item: AdminFluxItem; onUpdated: () => void }) {
+  const [zone, setZone] = useState<FluxZone>(item.zone as FluxZone)
+  const [saving, setSaving] = useState(false)
+
+  async function handleChange(next: FluxZone) {
+    if (next === zone) return
+    const previous = zone
+    setZone(next)
+    setSaving(true)
+    try {
+      await updateFluxAdmin(item.id_flux, { zone: next })
+      toast.add({ title: "Zone mise à jour", description: `${item.nom} → ${next}`, type: "success" })
+      onUpdated()
+    } catch (err) {
+      setZone(previous)
+      const message = err instanceof ApiError ? err.message : "Impossible de modifier la zone"
+      toast.add({ title: "Erreur", description: message, type: "error" })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <MSelect
+      ariaLabel={`Zone de ${item.nom}`}
+      value={zone}
+      onChange={handleChange}
+      options={ZONE_OPTIONS}
+      className={cn("h-8 w-36 pr-2 pl-3 text-[13px]", saving && "opacity-60")}
+    />
   )
 }
 

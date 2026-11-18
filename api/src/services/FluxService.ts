@@ -17,6 +17,7 @@ import type {
   ListFluxQuery,
   ListSuggestionsQuery,
   ListMyFluxQuery,
+  UpdateFluxByAdminInput,
 } from "../validations/FluxValidations";
 
 const { FLUX_REFRESH_COOLDOWN_MINUTES } = process.env as { [key: string]: string };
@@ -420,6 +421,12 @@ export default class FluxService {
         totalPages: Math.max(Math.ceil(total / query.limit), 1),
       },
     };
+  }
+
+  async updateByAdmin(id_flux: string, data: UpdateFluxByAdminInput) {
+    const flux = await this.fluxRepository.getById(id_flux);
+    if (!flux) throw new HttpException(404, "Flux introuvable");
+    return await this.fluxRepository.update(id_flux, { zone: data.zone });
   }
 
   async setEpingle(userId: string, id_flux: string, epingle: boolean) {

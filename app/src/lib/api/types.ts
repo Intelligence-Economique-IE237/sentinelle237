@@ -185,6 +185,7 @@ export interface FluxArticle {
   date_publication: string
   lu: boolean
   favori: boolean
+  note?: string | null
 }
 
 
@@ -395,6 +396,14 @@ export interface HistoriqueMatiereResponse {
 
 export type UserRole = "veilleur" | "admin"
 
+/** Valeurs de l'enum Prisma `Zone` côté API. */
+export const FLUX_ZONES = ["afrique", "europe", "amerique", "asie", "oceanie", "international"] as const
+export type FluxZone = (typeof FLUX_ZONES)[number]
+
+/** Valeurs de l'enum Prisma `Offre` côté API. */
+export const USER_OFFRES = ["community", "entreprise"] as const
+export type UserOffre = (typeof USER_OFFRES)[number]
+
 export interface AdminUser {
   id_user: string
   pseudo: string
@@ -433,6 +442,7 @@ export interface AdminUserListResponse {
 export interface AdminUserUpdatePayload {
   role?: UserRole
   activated?: boolean
+  verified?: boolean
   offre?: string
   pseudo?: string
   pays?: string
