@@ -1,36 +1,44 @@
 import { useState } from "react"
-import { Upload } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { Rss, Upload } from "lucide-react"
 import { toast } from "@/components/ui/toast"
 import { useCachedFetch } from "@/hooks/useCachedFetch"
 import { getAllFluxAdmin, importOpml } from "@/lib/api/admin"
 import { ApiError } from "@/lib/api/client"
+import {
+  MButton,
+  MCard,
+  MCardHeader,
+  MDialog,
+  MDot,
+  MField,
+  MHero,
+  MInput,
+  MPagination,
+  MPill,
+  MSegmented,
+  MSkeleton,
+  MTextarea,
+} from "@/components/admin/mira"
+import { cn } from "@/lib/utils"
 
 const PAGE_SIZE = 20
+const DAY = 24 * 60 * 60 * 1000
+
+const TH = "px-3 pb-3 text-left font-mono text-[10px] font-normal tracking-wide text-m-muted uppercase"
+const TD = "px-3 py-3 align-middle"
 
 function formatDate(iso: string | null) {
   if (!iso) return "—"
   return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })
+}
+
+/** Fraîcheur de la dernière collecte : < 24 h, < 7 j, au-delà / jamais. */
+function freshnessDot(iso: string | null) {
+  if (!iso) return "bg-m-ring"
+  const age = Date.now() - new Date(iso).getTime()
+  if (age < DAY) return "bg-m-green"
+  if (age < 7 * DAY) return "bg-m-sand"
+  return "bg-m-orange"
 }
 
 export function AdminFluxTab() {
@@ -52,90 +60,108 @@ export function AdminFluxTab() {
   const totalPages = result?.pagination.totalPages ?? 1
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <Badge variant="outline">{total} flux au total</Badge>
-        <Button size="sm" className="gap-1.5" onClick={() => setImportOpen(true)}>
-          <Upload className="h-3.5 w-3.5" />
-          Importer un OPML
-        </Button>
-      </div>
-
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nom</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Zone</TableHead>
-              <TableHead>Dernière collecte</TableHead>
-              <TableHead>Créé par</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading && (
-              <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
-                  Chargement...
-                </TableCell>
-              </TableRow>
-            )}
-            {!loading && items.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
-                  Aucun flux
-                </TableCell>
-              </TableRow>
-            )}
-            {items.map((item) => (
-              <TableRow key={item.id_flux}>
-                <TableCell className="font-medium">
-                  <div className="flex items-center gap-2">
-                    {item.logo && (
-                      <img src={item.logo} alt="" className="h-4 w-4 shrink-0 rounded-sm object-contain" />
-                    )}
-                    <span className="truncate">{item.nom}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline">{item.type}</Badge>
-                </TableCell>
-                <TableCell className="text-muted-foreground">{item.zone}</TableCell>
-                <TableCell className="text-muted-foreground">{formatDate(item.last_crawled_at)}</TableCell>
-                <TableCell className="font-mono text-xs text-muted-foreground" title={item.created_by ?? undefined}>
-                  {item.created_by ? `${item.created_by.slice(0, 8)}...` : "—"}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-3">
-          <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
-            Précédent
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {page} / {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page === totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Suivant
-          </Button>
-        </div>
-      )}
-
-      <ImportOpmlDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        onImported={refresh}
+    <>
+      <MHero
+        title="Flux."
+        subtitle="Les sources surveillées par Sentinelle."
+        stats={[{ value: loading && !result ? "…" : total, label: "Flux au total", dot: "bg-m-ink" }]}
       />
-    </div>
+
+      <MCard>
+        <MCardHeader
+          title="Sources"
+          subtitle="Pastille verte : collecte de moins de 24 h. Jaune : moins de 7 jours."
+          action={
+            <MButton size="sm" onClick={() => setImportOpen(true)}>
+              <Upload className="size-3.5!" />
+              <span className="max-sm:hidden">Importer un OPML</span>
+              <span className="sm:hidden">OPML</span>
+            </MButton>
+          }
+        />
+
+        <div className="-mx-3 mt-6 overflow-x-auto">
+          <table className="w-full border-separate border-spacing-0 text-sm">
+            <thead>
+              <tr>
+                <th className={TH}>Nom</th>
+                <th className={TH}>Type</th>
+                <th className={cn(TH, "hidden sm:table-cell")}>Zone</th>
+                <th className={cn(TH, "hidden md:table-cell")}>Dernière collecte</th>
+                <th className={cn(TH, "hidden lg:table-cell")}>Créé par</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading &&
+                items.length === 0 &&
+                Array.from({ length: 6 }, (_, i) => (
+                  <tr key={i}>
+                    <td colSpan={5} className="px-3 py-1.5">
+                      <MSkeleton className="h-12 rounded-2xl" />
+                    </td>
+                  </tr>
+                ))}
+              {!loading && items.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-14 text-center text-sm text-m-muted">
+                    Aucun flux
+                  </td>
+                </tr>
+              )}
+              {items.map((item) => (
+                <tr
+                  key={item.id_flux}
+                  className="[&>td]:border-t [&>td]:border-m-surface-3 hover:[&>td]:bg-m-surface-2 [&>td:first-child]:rounded-l-2xl [&>td:last-child]:rounded-r-2xl"
+                >
+                  <td className={TD}>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-m-surface-3">
+                        {item.logo ? (
+                          <img src={item.logo} alt="" className="size-5 object-contain" />
+                        ) : (
+                          <Rss className="size-4 text-m-muted" />
+                        )}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="max-w-[32ch] truncate font-medium">{item.nom}</p>
+                        <p className="flex items-center gap-1.5 text-[12px] text-m-soft md:hidden">
+                          <MDot className={freshnessDot(item.last_crawled_at)} />
+                          {formatDate(item.last_crawled_at)}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className={TD}>
+                    <MPill tone="neutral" className="uppercase">
+                      {item.type}
+                    </MPill>
+                  </td>
+                  <td className={cn(TD, "hidden text-m-body capitalize sm:table-cell")}>{item.zone}</td>
+                  <td className={cn(TD, "hidden md:table-cell")}>
+                    <span className="flex items-center gap-2 font-mono text-[12px] text-m-strong">
+                      <MDot className={freshnessDot(item.last_crawled_at)} />
+                      {formatDate(item.last_crawled_at)}
+                    </span>
+                  </td>
+                  <td
+                    className={cn(TD, "hidden font-mono text-[11px] text-m-muted lg:table-cell")}
+                    title={item.created_by ?? undefined}
+                  >
+                    {item.created_by ? `${item.created_by.slice(0, 8)}…` : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-5">
+          <MPagination page={page} totalPages={totalPages} onChange={setPage} />
+        </div>
+      </MCard>
+
+      <ImportOpmlDialog open={importOpen} onOpenChange={setImportOpen} onImported={refresh} />
+    </>
   )
 }
 
@@ -183,58 +209,59 @@ function ImportOpmlDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Importer un OPML</DialogTitle>
-          <DialogDescription>Import en masse de flux depuis une URL ou un contenu OPML</DialogDescription>
-        </DialogHeader>
-
-        <Tabs value={mode} onValueChange={(v) => setMode(v as "url" | "content")}>
-          <TabsList className="w-full">
-            <TabsTrigger value="url" className="flex-1">Depuis une URL</TabsTrigger>
-            <TabsTrigger value="content" className="flex-1">Coller le contenu</TabsTrigger>
-          </TabsList>
-          <TabsContent value="url" className="pt-3">
-            <div className="space-y-2">
-              <Label htmlFor="opmlUrl">URL du fichier OPML</Label>
-              <Input
-                id="opmlUrl"
-                value={opmlUrl}
-                onChange={(e) => setOpmlUrl(e.target.value)}
-                placeholder="https://exemple.com/flux.opml"
-              />
-            </div>
-          </TabsContent>
-          <TabsContent value="content" className="pt-3">
-            <div className="space-y-2">
-              <Label htmlFor="opmlContent">Contenu OPML</Label>
-              <textarea
-                id="opmlContent"
-                value={opmlContent}
-                onChange={(e) => setOpmlContent(e.target.value)}
-                rows={6}
-                className="w-full rounded-md border bg-transparent p-2 text-sm"
-                placeholder="<opml>...</opml>"
-              />
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        <div className="space-y-2">
-          <Label htmlFor="zone">Zone (optionnel)</Label>
-          <Input id="zone" value={zone} onChange={(e) => setZone(e.target.value)} placeholder="ex: afrique" />
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={importing}>
+    <MDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Importer un OPML"
+      description="Import en masse de flux depuis une URL ou un contenu OPML."
+      footer={
+        <>
+          <MButton variant="light" onClick={() => onOpenChange(false)} disabled={importing}>
             Annuler
-          </Button>
-          <Button onClick={handleImport} disabled={importing}>
-            {importing ? "Import en cours..." : "Importer"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </MButton>
+          <MButton onClick={handleImport} disabled={importing}>
+            {importing ? "Import en cours…" : "Importer"}
+          </MButton>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <MSegmented
+          value={mode}
+          onChange={setMode}
+          className="w-full"
+          itemClassName="flex-1"
+          items={[
+            { value: "url", label: "Depuis une URL" },
+            { value: "content", label: "Coller le contenu" },
+          ]}
+        />
+        {mode === "url" ? (
+          <MField label="URL du fichier OPML" htmlFor="opmlUrl">
+            <MInput
+              id="opmlUrl"
+              type="url"
+              value={opmlUrl}
+              onChange={(e) => setOpmlUrl(e.target.value)}
+              placeholder="https://exemple.com/flux.opml"
+            />
+          </MField>
+        ) : (
+          <MField label="Contenu OPML" htmlFor="opmlContent">
+            <MTextarea
+              id="opmlContent"
+              value={opmlContent}
+              onChange={(e) => setOpmlContent(e.target.value)}
+              rows={6}
+              className="font-mono text-[12px]"
+              placeholder="<opml>…</opml>"
+            />
+          </MField>
+        )}
+        <MField label="Zone" hint="(optionnel)" htmlFor="zone">
+          <MInput id="zone" value={zone} onChange={(e) => setZone(e.target.value)} placeholder="ex : afrique" />
+        </MField>
+      </div>
+    </MDialog>
   )
 }

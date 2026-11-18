@@ -11,14 +11,26 @@ export interface GlobeMarker {
 interface UserGlobeProps {
   markers: GlobeMarker[]
   className?: string
+  /** Couleur RVB (0–1) des marqueurs. */
+  markerColor?: [number, number, number]
+  /** Couleur RVB (0–1) du halo autour du globe. */
+  glowColor?: [number, number, number]
 }
+
+const DEFAULT_MARKER_COLOR: [number, number, number] = [0.2, 0.4, 1]
+const DEFAULT_GLOW_COLOR: [number, number, number] = [1, 1, 1]
 
 const BASE_THETA = 0.2
 
 const THETA_MIN = -Math.PI / 2 + 0.05
 const THETA_MAX = Math.PI / 2 - 0.05
 
-export function UserGlobe({ markers, className }: UserGlobeProps) {
+export function UserGlobe({
+  markers,
+  className,
+  markerColor = DEFAULT_MARKER_COLOR,
+  glowColor = DEFAULT_GLOW_COLOR,
+}: UserGlobeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [activeMarkerId, setActiveMarkerId] = useState<string | null>(null)
   const pointerInteracting = useRef<{ x: number; y: number } | null>(null)
@@ -40,8 +52,8 @@ export function UserGlobe({ markers, className }: UserGlobeProps) {
       mapSamples: 16000,
       mapBrightness: 6,
       baseColor: [1, 1, 1],
-      markerColor: [0.2, 0.4, 1],
-      glowColor: [1, 1, 1],
+      markerColor,
+      glowColor,
       markers: markers.map((m) => ({
         location: m.location,
         size: m.size,
@@ -68,7 +80,7 @@ export function UserGlobe({ markers, className }: UserGlobeProps) {
       cancelAnimationFrame(animationFrameId)
       globe.destroy()
     }
-  }, [markers])
+  }, [markers, markerColor, glowColor])
 
   return (
     <div className={className} style={{ position: "relative", width: 600, maxWidth: "100%" }}>
