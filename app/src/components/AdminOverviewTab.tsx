@@ -1,52 +1,37 @@
-import { useEffect, useState } from "react"
-import { Rss, ShieldCheck, UserCheck, Users } from "lucide-react"
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useEffect, useMemo, useState } from "react"
+import { ArrowRight, Check } from "lucide-react"
 import { getAllFluxAdmin, getUsers } from "@/lib/api/admin"
 import type { AdminUser, AdminFluxItem } from "@/lib/api/types"
 import { UsersGlobeCard } from "@/components/UsersGlobeCard"
+import {
+  MButton,
+  MCard,
+  MCardHeader,
+  MDotGauge,
+  MEmpty,
+  MHero,
+  MPill,
+  MRing,
+  MRuler,
+  MSkeleton,
+  MTile,
+  type PillTone,
+} from "@/components/admin/mira"
+import { cn } from "@/lib/utils"
+import type { AdminView } from "@/pages/Admin"
 
-const PIE_COLORS = ["#6366f1", "#f97316", "#22c55e", "#ec4899", "#06b6d4", "#eab308"]
+const DAY = 24 * 60 * 60 * 1000
 
-function KpiCard({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof Users
-  label: string
-  value: number | string
-}) {
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-4 pt-6">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <p className="text-2xl font-semibold">{value}</p>
-          <p className="text-xs text-muted-foreground">{label}</p>
-        </div>
-      </CardContent>
-    </Card>
-  )
+interface AdminOverviewTabProps {
+  pseudo?: string
+  onNavigate?: (view: AdminView) => void
 }
 
-export function AdminOverviewTab() {
+export function AdminOverviewTab({ pseudo, onNavigate }: AdminOverviewTabProps) {
   const [loading, setLoading] = useState(true)
   const [users, setUsers] = useState<AdminUser[]>([])
   const [fluxTotal, setFluxTotal] = useState(0)
+  const [freshCount, setFreshCount] = useState(0)
   const [zoneCounts, setZoneCounts] = useState<Record<string, number>>({})
   const [typeCounts, setTypeCounts] = useState<Record<string, number>>({})
 
@@ -67,6 +52,8 @@ export function AdminOverviewTab() {
         let page = 1
         const limit = 100
         let total = 0
+        let fresh = 0
+        const now = Date.now()
         const zones: Record<string, number> = {}
         const types: Record<string, number> = {}
 
@@ -77,6 +64,7 @@ export function AdminOverviewTab() {
           res.flux.forEach((f: AdminFluxItem) => {
             zones[f.zone] = (zones[f.zone] ?? 0) + 1
             types[f.type] = (types[f.type] ?? 0) + 1
+            if (f.last_crawled_at && now - new Date(f.last_crawled_at).getTime() < DAY) fresh++
           })
           if (page >= res.pagination.totalPages || res.flux.length === 0) break
           page++
@@ -84,6 +72,7 @@ export function AdminOverviewTab() {
 
         if (cancelled) return
         setFluxTotal(total)
+        setFreshCount(fresh)
         setZoneCounts(zones)
         setTypeCounts(types)
       } finally {
@@ -97,119 +86,294 @@ export function AdminOverviewTab() {
     }
   }, [])
 
+  const total = users.length
   const adminCount = users.filter((u) => u.role === "admin").length
   const activatedCount = users.filter((u) => u.activated).length
+  const unverifiedCount = users.filter((u) => !u.verified).length
+  const ratio = (n: number) => (total > 0 ? n / total : 0)
 
-  const roleData = [
-    { name: "Veilleur", value: users.filter((u) => u.role === "veilleur").length },
-    { name: "Admin", value: adminCount },
-  ].filter((d) => d.value > 0)
+  const zoneData = useMemo(
+    () =>
+      Object.entries(zoneCounts)
+        .map(([zone, count]) => ({ zone, count }))
+        .sort((a, b) => b.count - a.count),
+    [zoneCounts]
+  )
+  const typeData = useMemo(
+    () =>
+      Object.entries(typeCounts)
+        .map(([type, count]) => ({ type, count }))
+        .sort((a, b) => b.count - a.count),
+    [typeCounts]
+  )
 
-  const zoneData = Object.entries(zoneCounts)
-    .map(([zone, count]) => ({ zone, count }))
-    .sort((a, b) => b.count - a.count)
-
-  const typeData = Object.entries(typeCounts)
-    .map(([type, count]) => ({ type, count }))
-    .sort((a, b) => b.count - a.count)
+  const freshRatio = fluxTotal > 0 ? freshCount / fluxTotal : 0
+  const v = (n: number | string) => (loading ? "…" : n)
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold">Vue d'ensemble</h2>
-        <p className="text-sm text-muted-foreground">
-          {loading ? "Chargement des statistiques..." : "Calculé à partir des données actuelles"}
-        </p>
+    <>
+      <MHero
+        title={`Bonjour${pseudo ? `, ${pseudo}` : ""}.`}
+        subtitle="Voici l’état de la plateforme."
+        stats={[
+          { value: v(total), label: "Utilisateurs", dot: "bg-m-ink" },
+          { value: v(fluxTotal), label: "Flux", dot: "bg-m-ring" },
+          { value: v(unverifiedCount), label: "À vérifier", dot: "bg-m-orange" },
+        ]}
+      />
+
+      {/* Ligne 1 : indicateurs + carte sombre */}
+      <div className="grid gap-[18px] lg:grid-cols-12">
+        <MCard className="lg:col-span-7">
+          <MCardHeader
+            title="Comptes à surveiller"
+            subtitle="Calculé à partir des comptes enregistrés, chacun rapporté au total."
+            action={
+              onNavigate && (
+                <MButton variant="light" size="sm" onClick={() => onNavigate("users")}>
+                  Voir les {loading ? "" : total}
+                </MButton>
+              )
+            }
+          />
+          <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4 lg:mt-auto lg:grid-cols-2 lg:pt-10 xl:grid-cols-4">
+            <KpiTile
+              label="Comptes"
+              badge={{ tone: "neutral", text: "Total" }}
+              value={total}
+              unit="inscrits"
+              caption="Utilisateurs"
+              gauge={1}
+              loading={loading}
+            />
+            <KpiTile
+              label="Accès"
+              badge={{ tone: "sand", text: "Sensible" }}
+              value={adminCount}
+              unit="admins"
+              caption="Administrateurs"
+              gauge={ratio(adminCount)}
+              loading={loading}
+            />
+            <KpiTile
+              label="Statut"
+              badge={
+                ratio(activatedCount) >= 0.8
+                  ? { tone: "lime", text: "Optimal" }
+                  : { tone: "sand", text: "À suivre" }
+              }
+              value={activatedCount}
+              unit={`/ ${total}`}
+              caption="Comptes actifs"
+              gauge={ratio(activatedCount)}
+              loading={loading}
+            />
+            <KpiTile
+              label="Emails"
+              badge={unverifiedCount > 0 ? { tone: "peach", text: "À revoir" } : { tone: "lime", text: "OK" }}
+              value={unverifiedCount}
+              unit="comptes"
+              caption="Non vérifiés"
+              gauge={ratio(unverifiedCount)}
+              loading={loading}
+            />
+          </div>
+        </MCard>
+
+        <MCard tone="dark" className="min-h-[330px] lg:col-span-5">
+          <MCardHeader
+            dark
+            title="Flux surveillés"
+            subtitle={
+              loading
+                ? "Chargement des sources…"
+                : `${Math.round(freshRatio * 100)} % collectés au cours des dernières 24 h, sur ${zoneData.length} zone${zoneData.length > 1 ? "s" : ""}.`
+            }
+            action={!loading && <MPill tone="glass" className="h-7 px-3 text-[12px] font-medium">{typeData.length} types</MPill>}
+          />
+          <div className="mt-auto pt-8">
+            <p className="flex items-end gap-3">
+              <span className="text-[88px] leading-[0.9] font-light tracking-[-0.06em] tabular-nums sm:text-[112px]">
+                {loading ? "…" : fluxTotal}
+              </span>
+              <span className="pb-2 text-sm text-white/80">flux</span>
+            </p>
+            <MRuler className="mt-6" value={freshRatio} labels={["0 %", "25 %", "50 %", "75 %", "100 %"]} />
+          </div>
+        </MCard>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard icon={Users} label="Utilisateurs" value={loading ? "…" : users.length} />
-        <KpiCard icon={ShieldCheck} label="Administrateurs" value={loading ? "…" : adminCount} />
-        <KpiCard icon={UserCheck} label="Comptes actifs" value={loading ? "…" : activatedCount} />
-        <KpiCard icon={Rss} label="Flux au total" value={loading ? "…" : fluxTotal} />
+      {/* Ligne 2 : types / zones / globe */}
+      <div className="grid gap-[18px] md:grid-cols-2 lg:grid-cols-3">
+        <TypesCard data={typeData} total={fluxTotal} loading={loading} />
+        <ZonesCard data={zoneData} total={fluxTotal} loading={loading} onNavigate={onNavigate} />
+        <UsersGlobeCard users={users} loading={loading} className="md:col-span-2 lg:col-span-1" />
       </div>
+    </>
+  )
+}
 
-      <UsersGlobeCard users={users} loading={loading} />
+/* ------------------------------------------------------------------ */
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Utilisateurs par rôle</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <p className="py-16 text-center text-sm text-muted-foreground">Chargement...</p>
-            ) : roleData.length === 0 ? (
-              <p className="py-16 text-center text-sm text-muted-foreground">Aucune donnée</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={260}>
-                <PieChart>
-                  <Pie
-                    data={roleData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={90}
-                    label={(entry) => `${entry.name} (${entry.value})`}
-                  >
-                    {roleData.map((_, i) => (
-                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Flux par zone</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <p className="py-16 text-center text-sm text-muted-foreground">Chargement...</p>
-            ) : zoneData.length === 0 ? (
-              <p className="py-16 text-center text-sm text-muted-foreground">Aucune donnée</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={zoneData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="zone" tick={{ fontSize: 12 }} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Flux par type</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <p className="py-16 text-center text-sm text-muted-foreground">Chargement...</p>
-            ) : typeData.length === 0 ? (
-              <p className="py-16 text-center text-sm text-muted-foreground">Aucune donnée</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={typeData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
-                  <YAxis dataKey="type" type="category" tick={{ fontSize: 12 }} width={90} />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#22c55e" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
+function KpiTile({
+  label,
+  badge,
+  value,
+  unit,
+  caption,
+  gauge,
+  loading,
+}: {
+  label: string
+  badge: { tone: PillTone; text: string }
+  value: number
+  unit: string
+  caption: string
+  gauge: number
+  loading: boolean
+}) {
+  return (
+    <MTile className="gap-0">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[12px] text-m-soft">{label}</span>
+        {!loading && <MPill tone={badge.tone}>{badge.text}</MPill>}
       </div>
-    </div>
+      <p className="mt-4 flex items-baseline gap-1.5">
+        {loading ? (
+          <MSkeleton className="h-10 w-16" />
+        ) : (
+          <span className="text-[40px] leading-none font-light tracking-[-0.06em] tabular-nums">{value}</span>
+        )}
+        <span className="text-[11px] text-m-muted">{unit}</span>
+      </p>
+      <p className="mt-3 text-[13px] text-m-strong">{caption}</p>
+      <MDotGauge className="mt-5" value={loading ? 0 : gauge} />
+    </MTile>
+  )
+}
+
+function TypesCard({
+  data,
+  total,
+  loading,
+}: {
+  data: { type: string; count: number }[]
+  total: number
+  loading: boolean
+}) {
+  const top = data[0]
+  const share = top && total > 0 ? top.count / total : 0
+  const bars = data.slice(0, 7)
+  const max = Math.max(1, ...bars.map((b) => b.count))
+
+  return (
+    <MCard>
+      <MCardHeader
+        title="Flux par type"
+        subtitle={loading ? "Chargement…" : `${data.length} formats de sources collectés.`}
+        action={top && !loading && <MPill tone="lime" className="max-w-[12ch] truncate">{top.type}</MPill>}
+      />
+      {loading ? (
+        <MSkeleton className="mt-8 h-36 w-full" />
+      ) : data.length === 0 ? (
+        <MEmpty>Aucune donnée</MEmpty>
+      ) : (
+        <div className="mt-auto flex items-end gap-5 pt-8">
+          <div className="flex flex-col gap-4">
+            <MRing value={share} size={104}>
+              <span className="text-[22px] font-light tracking-[-0.05em] tabular-nums">{Math.round(share * 100)}%</span>
+            </MRing>
+          </div>
+          <div className="flex flex-col gap-3 pb-1">
+            <div>
+              <p className="text-[12px] text-m-soft">Type principal</p>
+              <p className="max-w-[9ch] truncate text-[26px] leading-tight font-light tracking-[-0.05em]">{top.type}</p>
+            </div>
+            <div>
+              <p className="text-[12px] text-m-soft">Types</p>
+              <p className="text-[26px] leading-tight font-light tracking-[-0.05em] tabular-nums">{data.length}</p>
+            </div>
+          </div>
+          <div className="ml-auto flex h-[120px] min-w-0 flex-1 items-end justify-end gap-1.5">
+            {bars.map((b, i) => (
+              <div key={b.type} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5" title={`${b.type} : ${b.count}`}>
+                <span
+                  className={cn("w-full max-w-4 rounded-full", i === 0 ? "m-bar-active" : "bg-m-surface-4")}
+                  style={{ height: `${Math.max(12, (b.count / max) * 100)}%` }}
+                />
+                <span className={cn("font-mono text-[9px] uppercase", i === 0 ? "text-m-ink" : "text-m-muted")}>
+                  {b.type.slice(0, 1)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </MCard>
+  )
+}
+
+function ZonesCard({
+  data,
+  total,
+  loading,
+  onNavigate,
+}: {
+  data: { zone: string; count: number }[]
+  total: number
+  loading: boolean
+  onNavigate?: (view: AdminView) => void
+}) {
+  const rows = data.slice(0, 4)
+  return (
+    <MCard>
+      <MCardHeader
+        title="Flux par zone"
+        subtitle="Les zones géographiques les mieux couvertes."
+        action={
+          onNavigate && (
+            <button
+              type="button"
+              onClick={() => onNavigate("flux")}
+              className="flex cursor-pointer items-center gap-1 pt-1 font-mono text-[12px] text-m-strong hover:text-m-ink"
+            >
+              {loading ? "…" : data.length} zones <ArrowRight className="size-3" />
+            </button>
+          )
+        }
+      />
+      <div className="mt-6 flex flex-col gap-2 lg:mt-auto">
+        {loading ? (
+          Array.from({ length: 4 }, (_, i) => <MSkeleton key={i} className="h-11 rounded-2xl" />)
+        ) : rows.length === 0 ? (
+          <MEmpty>Aucune donnée</MEmpty>
+        ) : (
+          rows.map((r, i) => {
+            const top = i < 2
+            return (
+              <div
+                key={r.zone}
+                className={cn(
+                  "flex h-11 items-center gap-3 rounded-2xl px-3.5",
+                  top ? "bg-m-lime-soft" : "bg-m-surface-2"
+                )}
+              >
+                {top ? (
+                  <span className="flex size-[18px] items-center justify-center rounded-full bg-m-ink">
+                    <Check className="size-3 text-m-lime" strokeWidth={3} />
+                  </span>
+                ) : (
+                  <span className="size-[18px] rounded-full border-[1.5px] border-m-ring" />
+                )}
+                <span className="min-w-0 flex-1 truncate text-[13px] font-medium capitalize">{r.zone || "—"}</span>
+                <span className="font-mono text-[11px] text-m-soft tabular-nums">
+                  {r.count} · {total > 0 ? Math.round((r.count / total) * 100) : 0}%
+                </span>
+              </div>
+            )
+          })
+        )}
+      </div>
+    </MCard>
   )
 }

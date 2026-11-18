@@ -2,8 +2,39 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
 
 @custom-variant dark (&:is(.dark *));
+
+/* --- Admin « Mira » : tokens du design Framer --- */
+@theme {
+    --font-mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, monospace;
+    --color-m-bg: #efefee;
+    --color-m-surface: #ffffff;
+    --color-m-surface-2: #f6f6f5;
+    --color-m-surface-3: #f1f1ef;
+    --color-m-surface-4: #ececea;
+    --color-m-panel: #e8e8e5;
+    --color-m-track: #e3e3e0;
+    --color-m-track-mid: #b5b5b0;
+    --color-m-avatar: #d2d2ce;
+    --color-m-ring: #c8c8c4;
+    --color-m-ink: #0f110f;
+    --color-m-strong: #3e3e3b;
+    --color-m-body: #4a4a47;
+    --color-m-soft: #6b6b68;
+    --color-m-muted: #94948f;
+    --color-m-lime: #d7f43a;
+    --color-m-green: #8fd94e;
+    --color-m-lime-soft: #f1f7da;
+    --color-m-lime-mist: #f1f7c8;
+    --color-m-orange: #ff8a4a;
+    --color-m-peach: #ffd9c7;
+    --color-m-sand: #f6e7a8;
+    --color-m-green-text: #3f7a1e;
+    --color-m-orange-text: #b4501e;
+}
+
 
 @theme inline {
     --font-heading: var(--font-sans);
@@ -138,4 +169,28 @@
   to {
     transform: translateX(-50%);
   }
+}
+
+/* --- Admin « Mira » : surfaces spéciales --- */
+.m-glass {
+  background: rgba(255, 255, 255, 0.55);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7), 0 10px 30px 0 rgba(15, 17, 15, 0.12);
+}
+
+.m-bio {
+  background:
+    radial-gradient(85% 75% at 82% 100%, rgba(178, 212, 58, 1) 0%, rgba(126, 168, 46, 0.9) 32%, rgba(64, 88, 30, 0.45) 62%, rgba(20, 22, 20, 0) 85%),
+    radial-gradient(60% 55% at 45% 70%, rgba(96, 136, 40, 0.5) 0%, rgba(20, 22, 20, 0) 70%),
+    #141614;
+}
+
+.m-bar-active {
+  background: linear-gradient(180deg, #d7f43a 0%, #8fd94e 100%);
+}
+
+.m-fade-top {
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 32px);
+  mask-image: linear-gradient(180deg, transparent 0, #000 32px);
 }

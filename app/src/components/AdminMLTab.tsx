@@ -1,18 +1,27 @@
 import { useState } from "react"
-import { Brain, RefreshCw, Send } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { ArrowUp, RefreshCw } from "lucide-react"
 import { toast } from "@/components/ui/toast"
 import { retrainMl, submitMlFeedback } from "@/lib/api/admin"
 import { ApiError } from "@/lib/api/client"
+import {
+  MButton,
+  MCard,
+  MCardHeader,
+  MField,
+  MHero,
+  MInput,
+  MPill,
+  MRuler,
+  MTextarea,
+} from "@/components/admin/mira"
+import { cn } from "@/lib/utils"
 
 export function AdminMLTab() {
   const [texte, setTexte] = useState("")
   const [label, setLabel] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [retraining, setRetraining] = useState(false)
+  const [sentCount, setSentCount] = useState(0)
 
   async function handleSubmitFeedback() {
     if (!texte.trim() || !label.trim()) {
@@ -25,6 +34,7 @@ export function AdminMLTab() {
       toast.add({ title: "Exemple ajouté au dataset", type: "success" })
       setTexte("")
       setLabel("")
+      setSentCount((n) => n + 1)
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Impossible de soumettre l'exemple"
       toast.add({ title: "Erreur", description: message, type: "error" })
@@ -47,58 +57,86 @@ export function AdminMLTab() {
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Send className="h-4 w-4" />
-            Soumettre un exemple étiqueté
-          </CardTitle>
-          <CardDescription>Ajoute un exemple au dataset d'entraînement</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="ml-texte">Texte</Label>
-            <textarea
-              id="ml-texte"
-              value={texte}
-              onChange={(e) => setTexte(e.target.value)}
-              rows={4}
-              className="w-full rounded-md border bg-transparent p-2 text-sm"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="ml-label">Label</Label>
-            <Input id="ml-label" value={label} onChange={(e) => setLabel(e.target.value)} />
-          </div>
-          <Button onClick={handleSubmitFeedback} disabled={submitting} className="w-full">
-            {submitting ? "Envoi..." : "Soumettre"}
-          </Button>
-        </CardContent>
-      </Card>
+    <>
+      <MHero
+        title="Machine Learning."
+        subtitle="Affinez le modèle de classification."
+        stats={[{ value: sentCount, label: "Exemples envoyés", dot: "bg-m-green" }]}
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Brain className="h-4 w-4" />
-            Ré-entraînement du modèle
-          </CardTitle>
-          <CardDescription>
-            Force un ré-entraînement immédiat, sans attendre le seuil automatique
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button
-            onClick={handleRetrain}
-            disabled={retraining}
-            variant="outline"
-            className="w-full gap-2"
+      <div className="grid gap-[18px] lg:grid-cols-12">
+        <MCard className="lg:col-span-7">
+          <MCardHeader
+            title="Soumettre un exemple étiqueté"
+            subtitle="Ajoute un exemple au dataset d’entraînement du classifieur."
+            action={<MPill tone="lime">Dataset</MPill>}
+          />
+          <form
+            className="mt-6 flex flex-1 flex-col gap-4"
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleSubmitFeedback()
+            }}
           >
-            <RefreshCw className={retraining ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
-            {retraining ? "Ré-entraînement en cours..." : "Lancer le ré-entraînement"}
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
+            <MField label="Texte" htmlFor="ml-texte">
+              <MTextarea
+                id="ml-texte"
+                value={texte}
+                onChange={(e) => setTexte(e.target.value)}
+                rows={5}
+                placeholder="Collez ici le titre ou l’extrait d’un article…"
+              />
+            </MField>
+            <div className="mt-auto flex items-center gap-2 rounded-full bg-m-surface-2 py-1.5 pr-1.5 pl-1">
+              <MInput
+                id="ml-label"
+                aria-label="Label"
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="Label (ex : economie)"
+                className="h-10 rounded-full bg-transparent"
+              />
+              <MButton
+                type="submit"
+                size="icon"
+                aria-label="Soumettre l’exemple"
+                disabled={submitting}
+                className="[&_svg]:text-m-lime"
+              >
+                <ArrowUp className={cn(submitting && "animate-pulse")} />
+              </MButton>
+            </div>
+          </form>
+        </MCard>
+
+        <MCard tone="dark" className="min-h-[360px] lg:col-span-5">
+          <MCardHeader
+            dark
+            title="Ré-entraînement du modèle"
+            subtitle="Force un ré-entraînement immédiat, sans attendre le seuil automatique."
+            action={
+              <MPill tone="glass" className="h-7 px-3 text-[12px] font-medium">
+                {retraining ? "En cours" : "Prêt"}
+              </MPill>
+            }
+          />
+          <div className="mt-auto flex flex-col gap-6 pt-8">
+            <p className="flex items-end gap-3">
+              <span className="text-[72px] leading-[0.9] font-light tracking-[-0.06em] tabular-nums sm:text-[88px]">
+                {sentCount}
+              </span>
+              <span className="pb-1.5 text-sm text-white/80">
+                nouvel{sentCount > 1 ? "s" : ""} exemple{sentCount > 1 ? "s" : ""} cette session
+              </span>
+            </p>
+            <MRuler value={Math.min(1, sentCount / 20)} labels={["0", "5", "10", "15", "20"]} />
+            <MButton variant="lime" onClick={handleRetrain} disabled={retraining} className="w-full">
+              <RefreshCw className={cn(retraining && "animate-spin")} />
+              {retraining ? "Ré-entraînement en cours…" : "Lancer le ré-entraînement"}
+            </MButton>
+          </div>
+        </MCard>
+      </div>
+    </>
   )
 }
