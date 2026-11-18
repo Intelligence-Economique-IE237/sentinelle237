@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Pencil, Plus, Trash2 } from "lucide-react"
-import { toast } from "@/components/ui/toast"
+import { toast } from "@/components/mira/toast-manager"
 import { useCachedFetch } from "@/hooks/useCachedFetch"
 import { createCategorieFlux, deleteCategorieFlux, updateCategorieFlux } from "@/lib/api/admin"
 import { ApiError } from "@/lib/api/client"
@@ -18,7 +18,7 @@ import {
   MPill,
   MSkeleton,
   MTile,
-} from "@/components/admin/mira"
+} from "@/components/mira/mira"
 
 const EMPTY_FORM: CategorieFluxPayload = { code: "", libelle: "", couleur: "#8fd94e", description: "" }
 

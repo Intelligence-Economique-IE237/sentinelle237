@@ -60,12 +60,26 @@ export async function getFluxArticles(
   params?: { page?: number; limit?: number }
 ): Promise<FluxArticle[]> {
   const { data } = await apiClient.get<unknown>(`/flux/${id}/articles`, { params })
-  console.log("[getFluxArticles] erreur:", data)
   if (Array.isArray(data)) return data as FluxArticle[]
   const obj = data as Record<string, unknown>
   if (Array.isArray(obj?.articles)) return obj.articles as FluxArticle[]
   if (Array.isArray(obj?.data)) return obj.data as FluxArticle[]
   return []
+}
+
+/** Une page d'articles d'un flux, avec la pagination renvoyée par l'API. */
+export async function getFluxArticlesPage(
+  id: string,
+  params: { page: number; limit: number }
+): Promise<{ data: FluxArticle[]; total: number; totalPages: number }> {
+  const { data } = await apiClient.get<unknown>(`/flux/${id}/articles`, { params })
+  const obj = (data ?? {}) as { articles?: FluxArticle[]; pagination?: { total: number; totalPages: number } }
+  const list = Array.isArray(data) ? (data as FluxArticle[]) : Array.isArray(obj.articles) ? obj.articles : []
+  return {
+    data: list,
+    total: obj.pagination?.total ?? list.length,
+    totalPages: obj.pagination?.totalPages ?? 1,
+  }
 }
 
 export async function refreshFlux(id: string): Promise<{ message: string }> {

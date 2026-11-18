@@ -6,6 +6,8 @@ import type {
   AdminUserUpdatePayload,
   AdminFluxListParams,
   AdminFluxListResponse,
+  AdminFluxItem,
+  FluxZone,
   ImportOpmlPayload,
   ImportOpmlResponse,
   CategorieFlux,
@@ -26,8 +28,8 @@ export async function getUser(id: string): Promise<AdminUser> {
 }
 
 export async function updateUser(id: string, payload: AdminUserUpdatePayload): Promise<AdminUser> {
-  const { data } = await apiClient.patch<AdminUser>(`/users/${id}`, payload)
-  return data
+  const { data } = await apiClient.patch<{ user: AdminUser }>(`/users/${id}`, payload)
+  return data.user
 }
 
 export async function deleteUser(id: string): Promise<void> {
@@ -39,6 +41,11 @@ export async function deleteUser(id: string): Promise<void> {
 export async function getAllFluxAdmin(params: AdminFluxListParams = {}): Promise<AdminFluxListResponse> {
   const { data } = await apiClient.get<AdminFluxListResponse>("/flux/admin/all", { params })
   return data
+}
+
+export async function updateFluxAdmin(id: string, payload: { zone: FluxZone }): Promise<AdminFluxItem> {
+  const { data } = await apiClient.patch<{ flux: AdminFluxItem }>(`/flux/admin/${id}`, payload)
+  return data.flux
 }
 
 export async function importOpml(payload: ImportOpmlPayload): Promise<ImportOpmlResponse> {

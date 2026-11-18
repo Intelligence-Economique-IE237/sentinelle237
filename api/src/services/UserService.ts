@@ -84,7 +84,13 @@ export default class UserService {
 
     async updateByAdmin(id_user: string, data: UpdateUserByAdminInput) {
         await this.getById(id_user);
-        return await this.userRepository.update(id_user, data as Prisma.UserUpdateInput);
+        const update: Prisma.UserUpdateInput = { ...data };
+        // Vérification manuelle par un admin : le lien de vérification en attente devient inutile.
+        if (data.verified === true) {
+            update.token_verification = null;
+            update.token_expiration = null;
+        }
+        return await this.userRepository.update(id_user, update);
     }
 
     async updateRaw(id_user: string, data: Prisma.UserUpdateInput) {

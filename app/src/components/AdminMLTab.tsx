@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { ArrowUp, RefreshCw } from "lucide-react"
-import { toast } from "@/components/ui/toast"
+import { toast } from "@/components/mira/toast-manager"
 import { retrainMl, submitMlFeedback } from "@/lib/api/admin"
 import { ApiError } from "@/lib/api/client"
 import {
@@ -11,9 +11,8 @@ import {
   MHero,
   MInput,
   MPill,
-  MRuler,
   MTextarea,
-} from "@/components/admin/mira"
+} from "@/components/mira/mira"
 import { cn } from "@/lib/utils"
 
 export function AdminMLTab() {
@@ -129,7 +128,6 @@ export function AdminMLTab() {
                 nouvel{sentCount > 1 ? "s" : ""} exemple{sentCount > 1 ? "s" : ""} cette session
               </span>
             </p>
-            <MRuler value={Math.min(1, sentCount / 20)} labels={["0", "5", "10", "15", "20"]} />
             <MButton variant="lime" onClick={handleRetrain} disabled={retraining} className="w-full">
               <RefreshCw className={cn(retraining && "animate-spin")} />
               {retraining ? "Ré-entraînement en cours…" : "Lancer le ré-entraînement"}

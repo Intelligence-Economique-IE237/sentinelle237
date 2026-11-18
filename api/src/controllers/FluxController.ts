@@ -119,6 +119,15 @@ export default class FluxController {
     }
   }
 
+  async updateByAdmin(req: Request, res: Response, next: NextFunction) {
+    try {
+      const flux = await this.fluxService.updateByAdmin(req.params.id as string, req.body);
+      res.status(200).json({ flux });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async setEpingle(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       if (!req.user) throw new HttpException(401, "Unauthorized");

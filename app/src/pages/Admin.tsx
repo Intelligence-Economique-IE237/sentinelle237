@@ -1,13 +1,14 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
-import { ArrowUpRight, Brain, LayoutDashboard, Radar, Rss, Tag, Users } from "lucide-react"
+import { ArrowUpRight, Brain, LayoutDashboard, Rss, Tag, Users } from "lucide-react"
+import { BrandMark } from "@/components/app/BrandMark"
 import { AdminOverviewTab } from "@/components/AdminOverviewTab"
 import { AdminUsersTab } from "@/components/AdminUsersTab"
 import { AdminFluxTab } from "@/components/AdminFluxTab"
 import { AdminCategoriesTab } from "@/components/AdminCategoriesTab"
 import { AdminMLTab } from "@/components/AdminMLTab"
-import { MAvatar, MSegmented } from "@/components/admin/mira"
-import { mButtonClasses } from "@/components/admin/mira-styles"
+import { MAvatar, MBackground, MSegmented } from "@/components/mira/mira"
+import { mButtonClasses } from "@/components/mira/mira-styles"
 import { useAuth } from "@/context/AuthContext"
 import { cn } from "@/lib/utils"
 
@@ -27,23 +28,12 @@ export default function Admin() {
 
   return (
     <div className="relative isolate min-h-svh overflow-x-clip bg-m-bg font-sans text-m-ink antialiased">
-      {/* Halos d'arrière-plan */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-[18%] -right-[8%] h-[62%] w-[52%] rounded-full bg-m-lime-mist opacity-90 blur-[120px]" />
-        <div className="absolute top-[38%] -left-[12%] h-[52%] w-[42%] rounded-full bg-m-panel opacity-80 blur-[110px]" />
-      </div>
+      <MBackground />
 
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-[18px] px-3 pt-3 pb-28 sm:px-5 sm:pt-4 md:px-7 md:pt-5 md:pb-7">
         {/* Barre supérieure */}
         <header className="m-glass sticky top-3 z-30 flex h-[60px] items-center justify-between gap-3 rounded-full pr-2 pl-4 md:top-5">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-m-ink">
-              <Radar className="size-4 text-m-lime" strokeWidth={2.4} />
-            </span>
-            <span className="truncate text-[19px] leading-none font-semibold tracking-[-0.04em]">
-              sentinelle<span className="text-m-muted">237</span>
-            </span>
-          </div>
+          <BrandMark />
 
           <MSegmented
             className="hidden lg:flex"
@@ -85,7 +75,7 @@ export default function Admin() {
       </div>
 
       {/* Barre d'onglets flottante (mobile) */}
-      <nav className="m-glass fixed inset-x-3 bottom-3 z-30 grid grid-cols-5 gap-0.5 rounded-full p-1 md:hidden">
+      <nav className="m-glass fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 grid grid-cols-5 gap-0.5 rounded-full p-1 md:hidden">
         {NAV_ITEMS.map(({ view, short, icon: Icon }) => {
           const active = view === selected
           return (

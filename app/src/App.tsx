@@ -5,6 +5,7 @@ import Account from './pages/Account'
 import Feeds from './pages/Feeds'
 import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
+import Recherche from './pages/Recherche'
 import UserDashboardView from './components/UserDashboardView'
 import { AuthProvider } from './context/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -54,6 +55,14 @@ function App() {
                     element={
                         <ProtectedRoute>
                             <Feeds />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/recherche"
+                    element={
+                        <ProtectedRoute>
+                            <Recherche />
                         </ProtectedRoute>
                     }
                 />

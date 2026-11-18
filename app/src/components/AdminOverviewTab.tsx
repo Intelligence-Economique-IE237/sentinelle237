@@ -7,16 +7,13 @@ import {
   MButton,
   MCard,
   MCardHeader,
-  MDotGauge,
   MEmpty,
   MHero,
   MPill,
-  MRing,
-  MRuler,
   MSkeleton,
   MTile,
   type PillTone,
-} from "@/components/admin/mira"
+} from "@/components/mira/mira"
 import { cn } from "@/lib/utils"
 import type { AdminView } from "@/pages/Admin"
 
@@ -107,7 +104,6 @@ export function AdminOverviewTab({ pseudo, onNavigate }: AdminOverviewTabProps) 
     [typeCounts]
   )
 
-  const freshRatio = fluxTotal > 0 ? freshCount / fluxTotal : 0
   const v = (n: number | string) => (loading ? "…" : n)
 
   return (
@@ -127,7 +123,7 @@ export function AdminOverviewTab({ pseudo, onNavigate }: AdminOverviewTabProps) 
         <MCard className="lg:col-span-7">
           <MCardHeader
             title="Comptes à surveiller"
-            subtitle="Calculé à partir des comptes enregistrés, chacun rapporté au total."
+            subtitle="Calculé à partir des comptes enregistrés."
             action={
               onNavigate && (
                 <MButton variant="light" size="sm" onClick={() => onNavigate("users")}>
@@ -143,7 +139,6 @@ export function AdminOverviewTab({ pseudo, onNavigate }: AdminOverviewTabProps) 
               value={total}
               unit="inscrits"
               caption="Utilisateurs"
-              gauge={1}
               loading={loading}
             />
             <KpiTile
@@ -152,7 +147,6 @@ export function AdminOverviewTab({ pseudo, onNavigate }: AdminOverviewTabProps) 
               value={adminCount}
               unit="admins"
               caption="Administrateurs"
-              gauge={ratio(adminCount)}
               loading={loading}
             />
             <KpiTile
@@ -165,7 +159,6 @@ export function AdminOverviewTab({ pseudo, onNavigate }: AdminOverviewTabProps) 
               value={activatedCount}
               unit={`/ ${total}`}
               caption="Comptes actifs"
-              gauge={ratio(activatedCount)}
               loading={loading}
             />
             <KpiTile
@@ -174,7 +167,6 @@ export function AdminOverviewTab({ pseudo, onNavigate }: AdminOverviewTabProps) 
               value={unverifiedCount}
               unit="comptes"
               caption="Non vérifiés"
-              gauge={ratio(unverifiedCount)}
               loading={loading}
             />
           </div>
@@ -184,12 +176,8 @@ export function AdminOverviewTab({ pseudo, onNavigate }: AdminOverviewTabProps) 
           <MCardHeader
             dark
             title="Flux surveillés"
-            subtitle={
-              loading
-                ? "Chargement des sources…"
-                : `${Math.round(freshRatio * 100)} % collectés au cours des dernières 24 h, sur ${zoneData.length} zone${zoneData.length > 1 ? "s" : ""}.`
-            }
-            action={!loading && <MPill tone="glass" className="h-7 px-3 text-[12px] font-medium">{typeData.length} types</MPill>}
+            subtitle={loading ? "Chargement des sources…" : "Toutes les sources collectées par la plateforme."}
+            action={!loading && <MPill tone="glass" className="h-7 px-3 text-[12px] font-medium">{typeData.length} type{typeData.length > 1 ? "s" : ""}</MPill>}
           />
           <div className="mt-auto pt-8">
             <p className="flex items-end gap-3">
@@ -198,14 +186,27 @@ export function AdminOverviewTab({ pseudo, onNavigate }: AdminOverviewTabProps) 
               </span>
               <span className="pb-2 text-sm text-white/80">flux</span>
             </p>
-            <MRuler className="mt-6" value={freshRatio} labels={["0 %", "25 %", "50 %", "75 %", "100 %"]} />
+            {!loading && (
+              <dl className="mt-6 grid grid-cols-3 gap-2">
+                {[
+                  { label: "Collectés < 24 h", value: freshCount },
+                  { label: "Zones", value: zoneData.length },
+                  { label: "Types", value: typeData.length },
+                ].map((s) => (
+                  <div key={s.label} className="rounded-2xl bg-white/[.08] px-3 py-2.5 backdrop-blur">
+                    <dt className="truncate text-[11px] text-white/60">{s.label}</dt>
+                    <dd className="mt-0.5 text-[20px] leading-tight font-light tracking-[-0.04em] tabular-nums">{s.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
           </div>
         </MCard>
       </div>
 
       {/* Ligne 2 : types / zones / globe */}
       <div className="grid gap-[18px] md:grid-cols-2 lg:grid-cols-3">
-        <TypesCard data={typeData} total={fluxTotal} loading={loading} />
+        <TypesCard data={typeData} loading={loading} />
         <ZonesCard data={zoneData} total={fluxTotal} loading={loading} onNavigate={onNavigate} />
         <UsersGlobeCard users={users} loading={loading} className="md:col-span-2 lg:col-span-1" />
       </div>
@@ -221,7 +222,6 @@ function KpiTile({
   value,
   unit,
   caption,
-  gauge,
   loading,
 }: {
   label: string
@@ -229,7 +229,6 @@ function KpiTile({
   value: number
   unit: string
   caption: string
-  gauge: number
   loading: boolean
 }) {
   return (
@@ -247,22 +246,18 @@ function KpiTile({
         <span className="text-[11px] text-m-muted">{unit}</span>
       </p>
       <p className="mt-3 text-[13px] text-m-strong">{caption}</p>
-      <MDotGauge className="mt-5" value={loading ? 0 : gauge} />
     </MTile>
   )
 }
 
 function TypesCard({
   data,
-  total,
   loading,
 }: {
   data: { type: string; count: number }[]
-  total: number
   loading: boolean
 }) {
   const top = data[0]
-  const share = top && total > 0 ? top.count / total : 0
   const bars = data.slice(0, 7)
   const max = Math.max(1, ...bars.map((b) => b.count))
 
@@ -279,11 +274,6 @@ function TypesCard({
         <MEmpty>Aucune donnée</MEmpty>
       ) : (
         <div className="mt-auto flex items-end gap-5 pt-8">
-          <div className="flex flex-col gap-4">
-            <MRing value={share} size={104}>
-              <span className="text-[22px] font-light tracking-[-0.05em] tabular-nums">{Math.round(share * 100)}%</span>
-            </MRing>
-          </div>
           <div className="flex flex-col gap-3 pb-1">
             <div>
               <p className="text-[12px] text-m-soft">Type principal</p>

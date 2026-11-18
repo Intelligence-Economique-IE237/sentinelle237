@@ -2,7 +2,7 @@ import { Router } from "express";
 import { Role } from "@prisma/client";
 import FluxController from "../controllers/FluxController";
 import ValidateRequest from "../middlewares/ValidateRequest";
-import { createFluxSchema, epingleSchema } from "../validations/FluxValidations";
+import { createFluxSchema, epingleSchema, updateFluxByAdminSchema } from "../validations/FluxValidations";
 import Auth from "../middlewares/Auth";
 
 const router = Router();
@@ -11,6 +11,12 @@ const authMiddleware = new Auth();
 
 router
   .get("/admin/all", authMiddleware.verifyRoles([Role.admin]), fluxController.getAllForAdmin.bind(fluxController))
+  .patch(
+    "/admin/:id",
+    authMiddleware.verifyRoles([Role.admin]),
+    ValidateRequest(updateFluxByAdminSchema),
+    fluxController.updateByAdmin.bind(fluxController)
+  )
   .get("/suggestions", fluxController.getSuggestions.bind(fluxController))
   .post("/", ValidateRequest(createFluxSchema), fluxController.create.bind(fluxController))
   .get("/", fluxController.getMine.bind(fluxController))

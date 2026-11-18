@@ -1,30 +1,11 @@
 import { useEffect, useState } from "react"
 import type React from "react"
-import { Download, Loader2, Upload } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Progress } from "@/components/ui/progress"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { toast } from "@/components/ui/toast"
+import { Check, Download, FileText, Loader2, Upload } from "lucide-react"
+import { MButton, MDialog, MEmpty, MField, MInput, MPill, MSegmented, MSelect, MSkeleton } from "@/components/mira/mira"
+import { toast } from "@/components/mira/toast-manager"
 import { genererRevue, getTemplates, telechargerRevue, uploadTemplate } from "@/lib/api/revues"
-import type { Dossier } from "@/lib/api/types"
-import type { Flux, ModeleRevue, Revue } from "@/lib/api/types"
+import { cn } from "@/lib/utils"
+import type { Dossier, Flux, ModeleRevue, Revue } from "@/lib/api/types"
 
 interface RevuesDialogProps {
   open: boolean
@@ -33,62 +14,69 @@ interface RevuesDialogProps {
   feeds: Flux[]
 }
 
+const NONE = "__none__"
+
 export function RevuesDialog({ open, onOpenChange, dossiers, feeds }: RevuesDialogProps) {
-  const [templates, setTemplates] = useState<ModeleRevue[]>([])
-  const [templatesLoading, setTemplatesLoading] = useState(false)
+  const [tab, setTab] = useState<"generate" | "templates">("generate")
+  // null = pas encore chargé
+  const [templates, setTemplates] = useState<ModeleRevue[] | null>(null)
+  const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
 
   const [titre, setTitre] = useState("")
-  const [modeleId, setModeleId] = useState("")
+  const [modeleId, setModeleId] = useState(NONE)
   const [sourceType, setSourceType] = useState<"dossier" | "flux">("dossier")
-  const [dossierId, setDossierId] = useState("")
+  const [dossierId, setDossierId] = useState(NONE)
   const [selectedFluxIds, setSelectedFluxIds] = useState<Set<string>>(new Set())
   const [generating, setGenerating] = useState(false)
 
-  // TODO: pas de route "liste des revues déjà générées" documentée —
+  // TODO : pas de route « liste des revues déjà générées » documentée —
   // on ne garde que celles créées pendant cette session
   const [sessionRevues, setSessionRevues] = useState<Revue[]>([])
 
   useEffect(() => {
     if (!open) return
-    setTemplatesLoading(true)
+    let cancelled = false
     getTemplates()
-      .then(setTemplates)
-      .catch(() => toast.add({ title: "Impossible de charger les modèles", type: "error" }))
-      .finally(() => setTemplatesLoading(false))
+      .then((list) => !cancelled && setTemplates(list))
+      .catch(() => {
+        if (cancelled) return
+        setTemplates([])
+        toast.add({ title: "Impossible de charger les modèles", type: "error" })
+      })
+    return () => {
+      cancelled = true
+    }
   }, [open])
 
-const [uploading, setUploading] = useState(false)
+  const templatesLoading = open && templates === null
+  const templateList = templates ?? []
 
-async function handleUploadTemplate(e: React.ChangeEvent<HTMLInputElement>) {
-  const file = e.target.files?.[0]
-  if (!file) return
-  if (file.type !== "application/pdf") {
-    toast.add({ title: "Erreur", description: "Seuls les fichiers PDF sont acceptés", type: "error" })
-    return
-  }
-  if (file.size > 10 * 1024 * 1024) {
-    toast.add({ title: "Erreur", description: "Le fichier dépasse 10 Mo", type: "error" })
-    return
-  }
-  setUploading(true)
-  setUploadProgress(0)
-  try {
-    const modele = await uploadTemplate(
-      file,
-      file.name.replace(/\.pdf$/i, ""),
-      setUploadProgress
-    )
-    setTemplates((prev) => [modele, ...prev])
-    toast.add({ title: "Modèle importé", description: modele.nom, type: "success" })
-  } catch {
-    toast.add({ title: "Erreur", description: "Impossible d'importer ce modèle", type: "error" })
-  } finally {
-    setUploading(false)
+  async function handleUploadTemplate(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.type !== "application/pdf") {
+      toast.add({ title: "Erreur", description: "Seuls les fichiers PDF sont acceptés", type: "error" })
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.add({ title: "Erreur", description: "Le fichier dépasse 10 Mo", type: "error" })
+      return
+    }
+    setUploading(true)
     setUploadProgress(0)
-    e.target.value = ""
+    try {
+      const modele = await uploadTemplate(file, file.name.replace(/\.pdf$/i, ""), setUploadProgress)
+      setTemplates((prev) => [modele, ...(prev ?? [])])
+      toast.add({ title: "Modèle importé", description: modele.nom, type: "success" })
+    } catch {
+      toast.add({ title: "Erreur", description: "Impossible d’importer ce modèle", type: "error" })
+    } finally {
+      setUploading(false)
+      setUploadProgress(0)
+      e.target.value = ""
+    }
   }
-}
 
   function toggleFlux(id: string) {
     setSelectedFluxIds((prev) => {
@@ -99,42 +87,31 @@ async function handleUploadTemplate(e: React.ChangeEvent<HTMLInputElement>) {
     })
   }
 
-async function handleGenerate(e: React.FormEvent) {
-  e.preventDefault()
-  if (!titre.trim()) {
-    toast.add({ title: "Le titre est requis", type: "error" })
-    return
-  }
-  if (!modeleId) {
-    toast.add({ title: "Choisis un modèle (importe-en un dans l'onglet Modèles si besoin)", type: "error" })
-    return
-  }
-  if (sourceType === "dossier" && !dossierId) {
-    toast.add({ title: "Choisis un dossier source", type: "error" })
-    return
-  }
-  if (sourceType === "flux" && selectedFluxIds.size === 0) {
-    toast.add({ title: "Choisis au moins un flux", type: "error" })
-    return
-  }
+  async function handleGenerate(e: React.FormEvent) {
+    e.preventDefault()
+    if (!titre.trim()) return toast.add({ title: "Le titre est requis", type: "error" })
+    if (modeleId === NONE)
+      return toast.add({ title: "Choisis un modèle (importe-en un dans l’onglet Modèles si besoin)", type: "error" })
+    if (sourceType === "dossier" && dossierId === NONE) return toast.add({ title: "Choisis un dossier source", type: "error" })
+    if (sourceType === "flux" && selectedFluxIds.size === 0) return toast.add({ title: "Choisis au moins un flux", type: "error" })
 
-  setGenerating(true)
-  try {
-    const revue = await genererRevue({
-      modele_id: modeleId,
-      titre,
-      dossier_id: sourceType === "dossier" ? dossierId : undefined,
-      flux_ids: sourceType === "flux" ? Array.from(selectedFluxIds) : undefined,
-    })
-    setSessionRevues((prev) => [revue, ...prev])
-    toast.add({ title: "Revue générée", description: revue.titre, type: "success" })
-    setTitre("")
-  } catch {
-    toast.add({ title: "Erreur", description: "Impossible de générer la revue", type: "error" })
-  } finally {
-    setGenerating(false)
+    setGenerating(true)
+    try {
+      const revue = await genererRevue({
+        modele_id: modeleId,
+        titre,
+        dossier_id: sourceType === "dossier" ? dossierId : undefined,
+        flux_ids: sourceType === "flux" ? Array.from(selectedFluxIds) : undefined,
+      })
+      setSessionRevues((prev) => [revue, ...prev])
+      toast.add({ title: "Revue générée", description: revue.titre, type: "success" })
+      setTitre("")
+    } catch {
+      toast.add({ title: "Erreur", description: "Impossible de générer la revue", type: "error" })
+    } finally {
+      setGenerating(false)
+    }
   }
-}
 
   async function handleDownload(revue: Revue) {
     try {
@@ -145,182 +122,164 @@ async function handleGenerate(e: React.FormEvent) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Revue de presse</DialogTitle>
-          <DialogDescription>
-            Génère un PDF avec les articles récents de tes flux ou d'un dossier
-          </DialogDescription>
-        </DialogHeader>
+    <MDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      className="max-w-lg"
+      title="Revue de presse"
+      description="Génère un PDF avec les articles récents de tes flux ou d’un dossier."
+    >
+      <MSegmented
+        value={tab}
+        onChange={setTab}
+        className="w-full"
+        itemClassName="flex-1"
+        items={[
+          { value: "generate", label: "Générer" },
+          { value: "templates", label: "Modèles" },
+        ]}
+      />
 
-        <Tabs defaultValue="generate" className="flex min-h-0 flex-1 flex-col">
-          <TabsList className="w-full">
-            <TabsTrigger value="generate" className="flex-1">Générer</TabsTrigger>
-            <TabsTrigger value="templates" className="flex-1">Modèles</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="generate" className="min-h-0 flex-1 space-y-4 overflow-y-auto pt-3">
-            <form onSubmit={handleGenerate} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="titre">Titre de la revue</Label>
-                <Input
-                  id="titre"
-                  value={titre}
-                  onChange={(e) => setTitre(e.target.value)}
-                  placeholder="Revue du 4 août 2026"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="modele">Modèle</Label>
-                <Select value={modeleId} onValueChange={(v) => setModeleId(v ?? "")}>
-                  <SelectTrigger id="modele" className="w-full">
-                    <SelectValue placeholder={templatesLoading ? "Chargement..." : "Choisis un modèle"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {templates.map((t) => (
-                        <SelectItem key={t.id_modele} value={t.id_modele}>
-                          {t.nom}
-                        </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {templates.length === 0 && !templatesLoading && (
-                    <p className="text-xs text-muted-foreground">
-                      Aucun modèle — importe-en un dans l'onglet "Modèles"
-                    </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Source des articles</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                      type="button"
-                      variant={sourceType === "dossier" ? "default" : "outline"}
-                      onClick={() => setSourceType("dossier")}
-                  >
-                    Un dossier
-                  </Button>
-                  <Button
-                      type="button"
-                      variant={sourceType === "flux" ? "default" : "outline"}
-                      onClick={() => setSourceType("flux")}
-                  >
-                    Des flux
-                  </Button>
-                </div>
-
-                {sourceType === "dossier" && (
-                    <div className="pt-2">
-                      <Select value={dossierId} onValueChange={(v) => setDossierId(v ?? "")}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Choisis un dossier" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {dossiers.map((d) => (
-                              <SelectItem key={d.id_dossier} value={d.id_dossier}>
-                                {d.nom}
-                              </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {dossiers.length === 0 && (
-                          <p className="mt-1 text-xs text-muted-foreground">Aucun dossier pour l'instant</p>
-                      )}
-                    </div>
-                )}
-
-                {sourceType === "flux" && (
-                    <div className="max-h-48 space-y-1 overflow-y-auto pt-2">
-                    {feeds.length === 0 && (
-                        <p className="text-xs text-muted-foreground">Aucun flux suivi</p>
-                    )}
-                    {feeds.map((f) => (
-                        <label
-                        key={f.id_flux}
-                        className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
-                        >
-                        <input
-                            type="checkbox"
-                            checked={selectedFluxIds.has(f.id_flux)}
-                            onChange={() => toggleFlux(f.id_flux)}
-                        />
-                        <span className="min-w-0 flex-1 truncate">{f.nom}</span>
-                        </label>
-                    ))}
-                    </div>
-                )}
-                </div>
-
-              <Button type="submit" disabled={generating} className="w-full">
-                {generating ? "Génération en cours..." : "Générer la revue"}
-              </Button>
-            </form>
-
-            {sessionRevues.length > 0 && (
-              <div className="space-y-2 border-t pt-4">
-                <p className="text-xs font-medium text-muted-foreground">Revues générées (cette session)</p>
-                {sessionRevues.map((r) => (
-                  <div key={r.id_revue} className="flex items-center justify-between rounded-md border p-2">
-                    <span className="min-w-0 flex-1 truncate text-sm">{r.titre}</span>
-                    <Button size="sm" variant="outline" className="gap-1.5" onClick={() => handleDownload(r)}>
-                      <Download className="h-3.5 w-3.5" />
-                      PDF
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="templates" className="min-h-0 flex-1 space-y-3 overflow-y-auto pt-3">
-            <div>
-              <Label
-                htmlFor="template-upload"
-                className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed p-6 text-sm text-muted-foreground hover:bg-accent"
-              >
-                {uploading ? (
-                  <div className="flex w-full flex-col items-center gap-2">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      {uploadProgress < 100 ? `Import en cours... ${uploadProgress}%` : "Traitement du fichier..."}
-                    </div>
-                    <Progress value={uploadProgress} className="h-1.5 w-full max-w-52" />
-                  </div>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4" />
-                    Importer un modèle PDF (10 Mo max)
-                  </>
-                )}
-              </Label>
-                            <input
-                id="template-upload"
-                type="file"
-                accept="application/pdf"
-                className="hidden"
-                onChange={handleUploadTemplate}
-                disabled={uploading}
+      {tab === "generate" ? (
+        <div className="flex flex-col gap-5">
+          <form onSubmit={handleGenerate} className="flex flex-col gap-4">
+            <MField label="Titre de la revue" htmlFor="revue-titre">
+              <MInput id="revue-titre" value={titre} onChange={(e) => setTitre(e.target.value)} placeholder="Revue du 18 novembre 2026" />
+            </MField>
+            <MField label="Modèle">
+              <MSelect
+                ariaLabel="Modèle"
+                value={modeleId}
+                onChange={setModeleId}
+                options={[
+                  { value: NONE, label: templatesLoading ? "Chargement…" : "Choisis un modèle" },
+                  ...templateList.map((t) => ({ value: t.id_modele, label: t.nom })),
+                ]}
+                className="w-full rounded-2xl"
               />
-            </div>
-
-            {templatesLoading && (
-              <p className="text-center text-sm text-muted-foreground">Chargement...</p>
-            )}
-            {!templatesLoading && templates.length === 0 && (
-              <p className="text-center text-sm text-muted-foreground">Aucun modèle importé pour l'instant</p>
-            )}
-            {templates.map((t) => (
-              <div key={t.id_modele} className="flex items-center justify-between rounded-md border p-2">
-                <span className="min-w-0 flex-1 truncate text-sm">{t.nom}</span>
-                <Badge variant="outline" className="text-xs">PDF</Badge>
+              {!templatesLoading && templateList.length === 0 && (
+                <p className="text-[12px] text-m-soft">Aucun modèle : importe-en un dans l’onglet « Modèles ».</p>
+              )}
+            </MField>
+            <MField label="Source des articles">
+              <MSegmented
+                value={sourceType}
+                onChange={setSourceType}
+                className="w-full"
+                itemClassName="flex-1"
+                items={[
+                  { value: "dossier", label: "Un dossier" },
+                  { value: "flux", label: "Des flux" },
+                ]}
+              />
+            </MField>
+            {sourceType === "dossier" ? (
+              <MSelect
+                ariaLabel="Dossier source"
+                value={dossierId}
+                onChange={setDossierId}
+                options={[
+                  { value: NONE, label: dossiers.length ? "Choisis un dossier" : "Aucun dossier pour l’instant" },
+                  ...dossiers.map((d) => ({ value: d.id_dossier, label: d.nom })),
+                ]}
+                className="w-full rounded-2xl"
+              />
+            ) : (
+              <div className="-mx-1 flex max-h-48 flex-col gap-1 overflow-y-auto px-1">
+                {feeds.length === 0 && <p className="text-[12px] text-m-soft">Aucun flux suivi</p>}
+                {feeds.map((f) => {
+                  const checked = selectedFluxIds.has(f.id_flux)
+                  return (
+                    <button
+                      key={f.id_flux}
+                      type="button"
+                      role="checkbox"
+                      aria-checked={checked}
+                      onClick={() => toggleFlux(f.id_flux)}
+                      className={cn(
+                        "flex h-10 cursor-pointer items-center gap-3 rounded-xl px-3 text-left text-[13px] transition-colors",
+                        checked ? "bg-m-lime-soft" : "bg-m-surface-2 hover:bg-m-surface-3"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "flex size-[18px] shrink-0 items-center justify-center rounded-full",
+                          checked ? "bg-m-ink" : "border-[1.5px] border-m-ring"
+                        )}
+                      >
+                        {checked && <Check className="size-3 text-m-lime" strokeWidth={3} />}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{f.nom}</span>
+                    </button>
+                  )
+                })}
               </div>
-            ))}
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+            )}
+            <MButton type="submit" disabled={generating} className="mt-1 w-full">
+              {generating ? "Génération en cours…" : "Générer la revue"}
+            </MButton>
+          </form>
+
+          {sessionRevues.length > 0 && (
+            <div className="flex flex-col gap-2 border-t border-m-surface-4 pt-4">
+              <p className="font-mono text-[11px] text-m-muted uppercase">Générées pendant cette session</p>
+              {sessionRevues.map((r) => (
+                <div key={r.id_revue} className="flex items-center gap-3 rounded-2xl bg-m-surface-2 py-1.5 pr-1.5 pl-4">
+                  <FileText className="size-4 shrink-0 text-m-muted" />
+                  <span className="min-w-0 flex-1 truncate text-[13px]">{r.titre}</span>
+                  <MButton size="sm" variant="white" className="h-8 px-3 text-[12px]" onClick={() => handleDownload(r)}>
+                    <Download className="size-3.5!" /> PDF
+                  </MButton>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <label
+            htmlFor="template-upload"
+            className={cn(
+              "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[22px] border border-dashed border-m-ring p-6 text-sm text-m-soft transition-colors hover:bg-m-surface-2",
+              uploading && "pointer-events-none"
+            )}
+          >
+            {uploading ? (
+              <>
+                <span className="flex items-center gap-2">
+                  <Loader2 className="size-4 animate-spin" />
+                  {uploadProgress < 100 ? `Import en cours… ${uploadProgress} %` : "Traitement du fichier…"}
+                </span>
+                <span className="h-1.5 w-full max-w-52 overflow-hidden rounded-full bg-m-track">
+                  <span className="block h-full rounded-full bg-m-ink transition-[width]" style={{ width: `${uploadProgress}%` }} />
+                </span>
+              </>
+            ) : (
+              <>
+                <Upload className="size-4" />
+                Importer un modèle PDF (10 Mo max)
+              </>
+            )}
+          </label>
+          <input
+            id="template-upload"
+            type="file"
+            accept="application/pdf"
+            className="hidden"
+            onChange={handleUploadTemplate}
+            disabled={uploading}
+          />
+          {templatesLoading && Array.from({ length: 3 }, (_, i) => <MSkeleton key={i} className="h-12 rounded-2xl" />)}
+          {!templatesLoading && templateList.length === 0 && <MEmpty className="py-6">Aucun modèle importé pour l’instant.</MEmpty>}
+          {templateList.map((t) => (
+            <div key={t.id_modele} className="flex items-center gap-3 rounded-2xl bg-m-surface-2 px-4 py-3">
+              <FileText className="size-4 shrink-0 text-m-muted" />
+              <span className="min-w-0 flex-1 truncate text-[13px]">{t.nom}</span>
+              <MPill tone="white" className="font-mono">PDF</MPill>
+            </div>
+          ))}
+        </div>
+      )}
+    </MDialog>
   )
 }

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react"
-import type React from "react"
 import { useNavigate } from "react-router-dom"
 import {
   Bell,
@@ -14,22 +13,8 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts"
-import { Badge } from "@/components/ui/badge"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
-import { AppSidebar, type SelectedView } from "@/components/app-sidebar"
+import { MainLayout } from "@/components/app/MainLayout"
+import { MCard, MCardHeader, MEmpty, MHero, MPill, MSkeleton, MTile } from "@/components/mira/mira"
 import { useCachedFetch } from "@/hooks/useCachedFetch"
 import { getAlertes, getAlerteResultats } from "@/lib/api/alerts"
 import { getFavoris, getAnnotes } from "@/lib/api/articles"
@@ -58,42 +43,34 @@ function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
 }
 
-// Cartes KPI dans le style du bloc officiel shadcn "section-cards" (dashboard-01) :
-// même structure/typographie (CardDescription + gros chiffre + CardFooter),
-// sans badge de tendance inventé — on n'a pas de donnée historique pour en
-// justifier un honnêtement.
-function KpiCard({
-                   label,
-                   value,
-                   loading,
-                   footerLine,
-                 }: {
+/** Tuile KPI : libellé, gros chiffre et légende. */
+function KpiTile({
+  label,
+  value,
+  loading,
+  caption,
+}: {
   label: string
   value: number
   loading: boolean
-  footerLine: string
+  caption: string
 }) {
   return (
-      <Card className="@container/card">
-        <CardHeader>
-          <CardDescription>{label}</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {loading ? "—" : value.toLocaleString("fr-FR")}
-          </CardTitle>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="text-muted-foreground">{footerLine}</div>
-        </CardFooter>
-      </Card>
+    <MTile>
+      <span className="text-[12px] text-m-soft">{label}</span>
+      <span className="mt-4 text-[40px] leading-none font-light tracking-[-0.06em] tabular-nums">
+        {loading ? <MSkeleton className="h-10 w-14" /> : value.toLocaleString("fr-FR")}
+      </span>
+      <span className="mt-3 text-[13px] text-m-strong">{caption}</span>
+    </MTile>
   )
 }
 
-// Page autonome avec sa propre AppSidebar. Cette vue n'affiche pas les
-// autres écrans (Aujourd'hui, Alertes, etc.) elle-même — tout clic dans la
-// sidebar redirige vers /dashboard (Dashboard.tsx), qui les gère réellement.
+// Page autonome partageant la coque MainLayout. Les autres écrans
+// (Aujourd'hui, Alertes, etc.) vivent dans Dashboard.tsx : la sidebar y
+// redirige en transmettant la vue demandée.
 export default function UserDashboardView() {
   const navigate = useNavigate()
-  const [selected, setSelected] = useState<SelectedView>({ type: "dashboard" })
 
   const { data: feedsData, loading: feedsLoading } = useCachedFetch<Flux[]>(
       "feeds",
@@ -217,7 +194,7 @@ export default function UserDashboardView() {
     for (const f of feeds) {
       const cat = f.categorie_id ? categoriesById[f.categorie_id] : undefined
       const label = cat?.libelle ?? "Non classé"
-      const color = cat?.couleur ?? "#9ca3af"
+      const color = cat?.couleur ?? "#b5b5b0"
       if (!counts[label]) {
         counts[label] = { value: 0, color }
       }
@@ -240,221 +217,151 @@ export default function UserDashboardView() {
   )
 
   return (
-      <SidebarProvider className="h-svh" style={{ "--sidebar-width": "350px" } as React.CSSProperties}>
-        <AppSidebar
-            selected={selected}
-            onSelect={(view) => {
-              setSelected(view)
-              navigate("/dashboard")
-            }}
-            counts={sidebarCounts}
-        />
+      <MainLayout active={{ type: "dashboard" }} counts={sidebarCounts}>
+        <MHero title="Tableau de bord." subtitle="Ta veille en un coup d’œil." />
 
-        <SidebarInset className="overflow-y-auto">
-          <div className="sticky top-0 z-20 flex items-center gap-3 border-b bg-background px-4 py-3">
-            <SidebarTrigger />
-            <Separator orientation="vertical" className="h-4!" />
-            <p className="text-sm">Tableau de bord</p>
-          </div>
-
-          <div className="@container/main flex flex-1 flex-col gap-2">
-            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              {/* Cartes KPI — grille responsive identique au bloc officiel */}
-              <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-                <KpiCard
-                    label="Flux suivis"
-                    value={feeds.length}
-                    loading={feedsLoading}
-                    footerLine="Sources actuellement suivies"
-                />
-                <KpiCard
-                    label="Alertes actives"
-                    value={alertes.length}
-                    loading={alertesLoading}
-                    footerLine="Mots-clés surveillés en continu"
-                />
-                <KpiCard
-                    label="Enquêtes en cours"
-                    value={dossiers.length}
-                    loading={dossiersLoading}
-                    footerLine="Dossiers d'investigation ouverts"
-                />
-                <KpiCard
-                    label="Favoris + annotés"
-                    value={(favorisTotal ?? 0) + (annotesTotal ?? 0)}
-                    loading={favorisTotal === null || annotesTotal === null}
-                    footerLine="Articles mis de côté ou commentés"
-                />
+        {(() => {
+          const kpis = [
+            { label: "Flux suivis", value: feeds.length, loading: feedsLoading, caption: "Sources actuellement suivies" },
+            { label: "Alertes actives", value: alertes.length, loading: alertesLoading, caption: "Mots-clés surveillés en continu" },
+            { label: "Enquêtes en cours", value: dossiers.length, loading: dossiersLoading, caption: "Dossiers d’investigation ouverts" },
+            {
+              label: "Favoris + annotés",
+              value: (favorisTotal ?? 0) + (annotesTotal ?? 0),
+              loading: favorisTotal === null || annotesTotal === null,
+              caption: "Articles mis de côté ou commentés",
+            },
+          ]
+          return (
+            <MCard>
+              <MCardHeader title="En un coup d’œil" subtitle="Tes principaux indicateurs de veille." />
+              <div className="mt-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
+                {kpis.map((k) => (
+                  <KpiTile key={k.label} {...k} />
+                ))}
               </div>
+            </MCard>
+          )
+        })()}
 
-              {/* À traiter / Enquêtes actives */}
-              <div className="grid gap-4 px-4 lg:px-6 lg:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <Bell className="h-4 w-4 text-red-600" />
-                      <CardTitle className="text-base">Vos alertes / À traiter</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {loadingUnreadResults && (
-                        <p className="py-4 text-center text-sm text-muted-foreground">Chargement...</p>
-                    )}
-                    {!loadingUnreadResults && unreadAlertResults.length === 0 && (
-                        <p className="py-4 text-center text-sm text-muted-foreground">
-                          Aucun résultat d'alerte non lu
-                        </p>
-                    )}
-                    {unreadAlertResults.map((r) => (
-                        <a
-                            key={r.id_resultat}
-                            href={r.lien}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-between gap-2 rounded-md border p-2 hover:bg-accent"
-                        >
-                          <span className="min-w-0 flex-1 truncate text-sm">{r.titre}</span>
-                          <Badge variant="outline" className="shrink-0 text-xs">{r.motCle}</Badge>
-                        </a>
-                    ))}
-                    <div className="flex items-center justify-between pt-1 text-sm">
-                      <span className="text-muted-foreground">Articles non lus</span>
-                      <Badge variant="secondary">{unreadTodayCount}</Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <FolderSearch className="h-4 w-4 text-orange-500" />
-                      <CardTitle className="text-base">Enquêtes actives</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {dossiersLoading && (
-                        <p className="py-4 text-center text-sm text-muted-foreground">Chargement...</p>
-                    )}
-                    {!dossiersLoading && dossiers.length === 0 && (
-                        <p className="py-4 text-center text-sm text-muted-foreground">
-                          Aucun dossier pour l'instant
-                        </p>
-                    )}
-                    {dossiers.slice(0, 5).map((d) => (
-                        <button
-                            key={d.id_dossier}
-                            type="button"
-                            onClick={() => navigate("/dashboard")}
-                            className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
-                        >
-                          <span className="min-w-0 flex-1 truncate">{d.nom}</span>
-                        </button>
-                    ))}
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Fil d'information / Répartition des flux */}
-              <div className="grid gap-4 px-4 lg:px-6 lg:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <Newspaper className="h-4 w-4" />
-                      <CardTitle className="text-base">Fil d'information</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-1">
-                    {articlesLoading && (
-                        <p className="py-4 text-center text-sm text-muted-foreground">Chargement...</p>
-                    )}
-                    {!articlesLoading && todayArticles.length === 0 && (
-                        <p className="py-4 text-center text-sm text-muted-foreground">
-                          Aucun article publié aujourd'hui
-                        </p>
-                    )}
-                    {todayArticles.slice(0, 5).map((item) => (
-                        <a
-                            key={item.id}
-                            href={item.lien}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate">{item.titre}</p>
-                            <p className="text-xs text-muted-foreground">{item.feedName}</p>
-                          </div>
-                          <span className="shrink-0 text-xs text-muted-foreground">{formatTime(item.publishedAt)}</span>
-                        </a>
-                    ))}
-                    {todayArticles.length > 0 && (
-                        <button
-                            type="button"
-                            onClick={() => navigate("/dashboard")}
-                            className="block w-full pt-1 text-center text-xs text-muted-foreground underline underline-offset-4"
-                        >
-                          Voir tout le fil sur Aujourd'hui
-                        </button>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <PieChartIcon className="h-4 w-4" />
-                      <CardTitle className="text-base">Répartition des flux</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {feedsLoading ? (
-                        <p className="py-8 text-center text-sm text-muted-foreground">Chargement...</p>
-                    ) : categoryDistribution.length === 0 ? (
-                        <p className="py-8 text-center text-sm text-muted-foreground">Aucun flux suivi</p>
-                    ) : (
-                        <div className="h-56 w-full">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie
-                                  data={categoryDistribution}
-                                  dataKey="value"
-                                  nameKey="name"
-                                  cx="50%"
-                                  cy="50%"
-                                  innerRadius={50}
-                                  outerRadius={80}
-                                  paddingAngle={2}
-                              >
-                                {categoryDistribution.map((c) => (
-                                    <Cell key={c.name} fill={c.color} />
-                                ))}
-                              </Pie>
-                              <Tooltip
-                                  contentStyle={{
-                                    backgroundColor: "hsl(var(--popover))",
-                                    border: "1px solid hsl(var(--border))",
-                                    borderRadius: "8px",
-                                    fontSize: "12px",
-                                  }}
-                              />
-                            </PieChart>
-                          </ResponsiveContainer>
-                        </div>
-                    )}
-                    <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1">
-                      {categoryDistribution.map((c) => (
-                          <div key={c.name} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: c.color }} />
-                            {c.name} ({c.value})
-                          </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+        <div className="grid gap-[18px] lg:grid-cols-2">
+          <MCard>
+            <MCardHeader
+              title="Alertes à traiter"
+              subtitle="Résultats d’alertes que tu n’as pas encore lus."
+              action={<MPill tone="neutral" className="font-mono">{unreadTodayCount} non lus</MPill>}
+            />
+            <div className="mt-6 flex flex-col gap-2">
+              {loadingUnreadResults && Array.from({ length: 3 }, (_, i) => <MSkeleton key={i} className="h-11 rounded-2xl" />)}
+              {!loadingUnreadResults && unreadAlertResults.length === 0 && <MEmpty className="py-8">Aucun résultat d’alerte non lu.</MEmpty>}
+              {unreadAlertResults.map((r) => (
+                <a
+                  key={r.id_resultat}
+                  href={r.lien}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex h-11 items-center gap-3 rounded-2xl bg-m-surface-2 px-3.5 transition-colors hover:bg-m-surface-3"
+                >
+                  <Bell className="size-4 shrink-0 text-m-orange" />
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{r.titre}</span>
+                  <MPill tone="sand" className="max-w-[12ch] truncate">{r.motCle}</MPill>
+                </a>
+              ))}
             </div>
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
+          </MCard>
+
+          <MCard tone="panel">
+            <MCardHeader title="Enquêtes actives" subtitle="Tes derniers dossiers d’investigation." />
+            <div className="mt-6 flex flex-col gap-2">
+              {dossiersLoading && Array.from({ length: 3 }, (_, i) => <MSkeleton key={i} className="h-11 rounded-2xl bg-m-surface/70" />)}
+              {!dossiersLoading && dossiers.length === 0 && <MEmpty className="py-8">Aucun dossier pour l’instant.</MEmpty>}
+              {dossiers.slice(0, 5).map((d) => (
+                <button
+                  key={d.id_dossier}
+                  type="button"
+                  onClick={() => navigate("/", { state: { view: { type: "dossiers" } } })}
+                  className="flex h-11 w-full cursor-pointer items-center gap-3 rounded-2xl bg-m-surface px-3.5 text-left transition-colors hover:bg-m-lime-soft"
+                >
+                  <FolderSearch className="size-4 shrink-0 text-m-soft" />
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{d.nom}</span>
+                </button>
+              ))}
+            </div>
+          </MCard>
+        </div>
+
+        <div className="grid gap-[18px] lg:grid-cols-2">
+          <MCard>
+            <MCardHeader
+              title="Fil d’information"
+              subtitle="Les derniers articles publiés aujourd’hui."
+              action={
+                todayArticles.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => navigate("/", { state: { view: { type: "today" } } })}
+                    className="flex cursor-pointer items-center gap-1 pt-1 font-mono text-[12px] text-m-strong hover:text-m-ink"
+                  >
+                    Tout voir <Newspaper className="size-3.5" />
+                  </button>
+                )
+              }
+            />
+            <div className="mt-5 flex flex-col">
+              {articlesLoading && Array.from({ length: 4 }, (_, i) => <MSkeleton key={i} className="mb-2 h-12 rounded-2xl" />)}
+              {!articlesLoading && todayArticles.length === 0 && <MEmpty className="py-8">Aucun article publié aujourd’hui.</MEmpty>}
+              {todayArticles.slice(0, 5).map((item) => (
+                <a
+                  key={item.id}
+                  href={item.lien}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="-mx-3 flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors hover:bg-m-surface-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[14px] font-medium">{item.titre}</p>
+                    <p className="truncate font-mono text-[11px] text-m-soft">{item.feedName}</p>
+                  </div>
+                  <span className="shrink-0 font-mono text-[11px] text-m-soft tabular-nums">{formatTime(item.publishedAt)}</span>
+                </a>
+              ))}
+            </div>
+          </MCard>
+
+          <MCard>
+            <MCardHeader title="Répartition des flux" subtitle="Tes sources suivies, par catégorie." action={<PieChartIcon className="size-5 text-m-muted" />} />
+            {feedsLoading ? (
+              <MSkeleton className="mx-auto mt-6 size-44 rounded-full" />
+            ) : categoryDistribution.length === 0 ? (
+              <MEmpty className="py-8">Aucun flux suivi.</MEmpty>
+            ) : (
+              <div className="mt-4 h-56 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={categoryDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={58} outerRadius={86} paddingAngle={3} cornerRadius={6} stroke="none">
+                      {categoryDistribution.map((c) => (
+                        <Cell key={c.name} fill={c.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "#0f110f", border: "none", borderRadius: "14px", fontSize: "12px", color: "#fff" }}
+                      itemStyle={{ color: "#fff" }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              {categoryDistribution.map((c) => (
+                <span key={c.name} className="flex h-7 items-center gap-1.5 rounded-full bg-m-surface-2 px-3 text-[12px] text-m-strong">
+                  <span className="size-2 rounded-full" style={{ backgroundColor: c.color }} />
+                  {c.name}
+                  <span className="font-mono text-m-muted">{c.value}</span>
+                </span>
+              ))}
+            </div>
+          </MCard>
+        </div>
+      </MainLayout>
   )
 }

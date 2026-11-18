@@ -1,43 +1,8 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import type React from "react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { MButton, MDialog, MField, MInput, MSelect } from "@/components/mira/mira"
+import { FREQUENCE_LABELS, LANGUE_LABELS } from "@/lib/labels"
 import type { Alerte, Frequence, Langue, NombreResultats } from "@/lib/api/types"
-
-export const FREQUENCE_LABELS: Record<Frequence, string> = {
-  immediat: "Immédiat",
-  quotidien: "Digest quotidien",
-  hebdomadaire: "Digest hebdomadaire",
-}
-
-export const LANGUE_LABELS: Record<Langue, string> = {
-  toutes: "Toutes langues",
-  fr: "Français",
-  en: "Anglais",
-  es: "Espagnol",
-  zh: "Chinois",
-  hi: "Hindi",
-  ar: "Arabe",
-  pt: "Portugais",
-  ru: "Russe",
-  ja: "Japonais",
-  de: "Allemand",
-}
 
 const emptyForm = {
   mot_cle: "",
@@ -46,38 +11,57 @@ const emptyForm = {
   pays: "",
   nombre_resultats: "meilleurs" as NombreResultats,
 }
+type AlertFormValues = typeof emptyForm
+
+const FREQUENCE_OPTIONS = (Object.keys(FREQUENCE_LABELS) as Frequence[]).map((f) => ({ value: f, label: FREQUENCE_LABELS[f] }))
+const LANGUE_OPTIONS = (Object.keys(LANGUE_LABELS) as Langue[]).map((l) => ({ value: l, label: LANGUE_LABELS[l] }))
+const NOMBRE_OPTIONS: { value: NombreResultats; label: string }[] = [
+  { value: "meilleurs", label: "Meilleurs (top 5)" },
+  { value: "tous", label: "Tous les résultats" },
+]
 
 interface AlertFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   editingAlerte: Alerte | null
-  onSubmit: (values: typeof emptyForm) => Promise<void> | void
+  onSubmit: (values: AlertFormValues) => Promise<void> | void
 }
 
-export function AlertFormDialog({
-  open,
-  onOpenChange,
+export function AlertFormDialog({ open, onOpenChange, editingAlerte, onSubmit }: AlertFormDialogProps) {
+  return (
+    <MDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={editingAlerte ? "Modifier l’alerte" : "Nouvelle alerte"}
+      description="Reçois une notification dès qu’un mot-clé apparaît dans tes flux."
+    >
+      {/* La clé réinitialise le formulaire à chaque ouverture ou changement d'alerte */}
+      <AlertForm key={`${editingAlerte?.id_alerte ?? "new"}-${open}`} editingAlerte={editingAlerte} onSubmit={onSubmit} />
+    </MDialog>
+  )
+}
+
+function AlertForm({
   editingAlerte,
   onSubmit,
-}: AlertFormDialogProps) {
-  const [form, setForm] = useState(emptyForm)
+}: {
+  editingAlerte: Alerte | null
+  onSubmit: (values: AlertFormValues) => Promise<void> | void
+}) {
+  const [form, setForm] = useState<AlertFormValues>(() =>
+    editingAlerte
+      ? {
+          mot_cle: editingAlerte.mot_cle,
+          frequence: editingAlerte.frequence,
+          langue: editingAlerte.langue,
+          pays: editingAlerte.pays ?? "",
+          nombre_resultats: editingAlerte.nombre_resultats,
+        }
+      : emptyForm
+  )
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    if (editingAlerte) {
-      setForm({
-        mot_cle: editingAlerte.mot_cle,
-        frequence: editingAlerte.frequence,
-        langue: editingAlerte.langue,
-        pays: editingAlerte.pays ?? "",
-        nombre_resultats: editingAlerte.nombre_resultats,
-      })
-    } else {
-      setForm(emptyForm)
-    }
-  }, [editingAlerte, open])
-
-  function updateForm<K extends keyof typeof form>(field: K, value: (typeof form)[K]) {
+  function update<K extends keyof AlertFormValues>(field: K, value: AlertFormValues[K]) {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
@@ -88,103 +72,47 @@ export function AlertFormDialog({
     try {
       await onSubmit(form)
     } catch {
-      // l'erreur est déjà affichée en toast par le parent (Dashboard.tsx) —
-      // on garde juste le formulaire ouvert en ne fermant pas le dialog ici
+      // l'erreur est déjà affichée en toast par le parent : on garde le formulaire ouvert
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{editingAlerte ? "Modifier l'alerte" : "Nouvelle alerte"}</DialogTitle>
-          <DialogDescription>
-            Reçois une notification dès qu'un mot-clé apparaît dans tes flux
-          </DialogDescription>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="mot_cle">Mot-clé</Label>
-            <Input
-              id="mot_cle"
-              value={form.mot_cle}
-              onChange={(e) => updateForm("mot_cle", e.target.value)}
-              placeholder="Cameroun"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="frequence">Fréquence</Label>
-            <Select
-              value={form.frequence}
-              onValueChange={(v) => updateForm("frequence", v as Frequence)}
-            >
-              <SelectTrigger id="frequence" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(FREQUENCE_LABELS) as Frequence[]).map((f) => (
-                  <SelectItem key={f} value={f}>
-                    {FREQUENCE_LABELS[f]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="langue">Langue</Label>
-              <Select value={form.langue} onValueChange={(v) => updateForm("langue", v as Langue)}>
-                <SelectTrigger id="langue" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(LANGUE_LABELS) as Langue[]).map((l) => (
-                    <SelectItem key={l} value={l}>
-                      {LANGUE_LABELS[l]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="pays">Pays (optionnel)</Label>
-              <Input
-                id="pays"
-                value={form.pays}
-                onChange={(e) => updateForm("pays", e.target.value.toUpperCase())}
-                placeholder="CM"
-                maxLength={2}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="nombre_resultats">Résultats par email</Label>
-            <Select
-              value={form.nombre_resultats}
-              onValueChange={(v) => updateForm("nombre_resultats", v as NombreResultats)}
-            >
-              <SelectTrigger id="nombre_resultats" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="meilleurs">Meilleurs (top 5)</SelectItem>
-                <SelectItem value="tous">Tous les résultats</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Button type="submit" disabled={saving} className="w-full">
-            {saving ? "Enregistrement..." : editingAlerte ? "Enregistrer" : "Créer l'alerte"}
-          </Button>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <MField label="Mot-clé" htmlFor="mot_cle">
+        <MInput id="mot_cle" value={form.mot_cle} onChange={(e) => update("mot_cle", e.target.value)} placeholder="Cameroun" />
+      </MField>
+      <MField label="Fréquence">
+        <MSelect ariaLabel="Fréquence" value={form.frequence} onChange={(v) => update("frequence", v)} options={FREQUENCE_OPTIONS} className="w-full rounded-2xl" />
+      </MField>
+      <div className="grid grid-cols-[1fr_7rem] gap-3">
+        <MField label="Langue">
+          <MSelect ariaLabel="Langue" value={form.langue} onChange={(v) => update("langue", v)} options={LANGUE_OPTIONS} className="w-full rounded-2xl" />
+        </MField>
+        <MField label="Pays" hint="(opt.)" htmlFor="pays">
+          <MInput
+            id="pays"
+            value={form.pays}
+            onChange={(e) => update("pays", e.target.value.toUpperCase())}
+            placeholder="CM"
+            maxLength={2}
+            className="font-mono uppercase"
+          />
+        </MField>
+      </div>
+      <MField label="Résultats par email">
+        <MSelect
+          ariaLabel="Résultats par email"
+          value={form.nombre_resultats}
+          onChange={(v) => update("nombre_resultats", v)}
+          options={NOMBRE_OPTIONS}
+          className="w-full rounded-2xl"
+        />
+      </MField>
+      <MButton type="submit" disabled={saving || !form.mot_cle.trim()} className="mt-1 w-full">
+        {saving ? "Enregistrement…" : editingAlerte ? "Enregistrer" : "Créer l’alerte"}
+      </MButton>
+    </form>
   )
 }
