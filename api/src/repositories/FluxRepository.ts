@@ -22,13 +22,14 @@ export default class FluxRepository {
 
   async getSuggestions(params: { skip: number; take: number; where: Prisma.FluxWhereInput }) {
     const [flux, total] = await Promise.all([
+      // Catalogue : tous les flux enregistrés en base, plus seulement ceux marqués is_suggestion
       this.db.flux.findMany({
-        where: { ...params.where, is_suggestion: true },
+        where: params.where,
         skip: params.skip,
         take: params.take,
         orderBy: { nom: "asc" },
       }),
-      this.db.flux.count({ where: { ...params.where, is_suggestion: true } }),
+      this.db.flux.count({ where: params.where }),
     ]);
     return { flux, total };
   }

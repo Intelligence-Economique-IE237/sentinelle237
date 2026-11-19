@@ -70,32 +70,46 @@ export default class RechercheAvanceeService {
         ]);
 
         const usedGlobal = await this.apiQuotaRepository.getCount(CURRENTS_ADVANCED_QUOTA_KEY, period);
-        const remaining = Number(CURRENTS_ADVANCED_SEARCH_DAILY_QUOTA) - usedGlobal;
+        // Variable absente ou invalide : 100 recherches web par jour par défaut (sinon NaN bloquait tout)
+        const quotaWeb = Number(CURRENTS_ADVANCED_SEARCH_DAILY_QUOTA) || 100;
+        const remaining = quotaWeb - usedGlobal;
 
         let resultatsSource: Awaited<ReturnType<CurrentsApiService["search"]>> = [];
         let resultatsCible: Awaited<ReturnType<CurrentsApiService["search"]>> = [];
         let webIndisponible = false;
+        let webRaison: "quota" | "erreur" | null = null;
 
         const appelsWeb = traductionDistincte ? 2 : 1;
         if (remaining >= appelsWeb) {
-            try {
-                resultatsSource = await this.currentsApiService.search(input.requete, {
+            // Les deux recherches partent en parallèle ; l'échec de l'une n'annule pas l'autre
+            const [source, cible] = await Promise.allSettled([
+                this.currentsApiService.search(input.requete, {
                     language: input.langue_source,
                     country: input.pays,
-                });
-                if (traductionDistincte) {
-                    resultatsCible = await this.currentsApiService.search(requeteTraduite, {
-                        language: input.langue_cible,
-                        country: input.pays,
-                    });
+                }),
+                traductionDistincte
+                    ? this.currentsApiService.search(requeteTraduite, {
+                          language: input.langue_cible,
+                          country: input.pays,
+                      })
+                    : Promise.resolve([]),
+            ]);
+            for (const r of [source, cible]) {
+                if (r.status === "rejected") {
+                    console.error("[recherche-avancee]: échec recherche web:", r.reason instanceof Error ? r.reason.message : r.reason);
                 }
-                await this.apiQuotaRepository.increment(CURRENTS_ADVANCED_QUOTA_KEY, period, appelsWeb);
-            } catch (err) {
-                console.error("[recherche-avancee]: échec recherche web:", err instanceof Error ? err.message : err);
-                webIndisponible = true;
             }
+            if (source.status === "fulfilled") resultatsSource = source.value;
+            if (cible.status === "fulfilled") resultatsCible = cible.value;
+            if (source.status === "rejected" && (cible.status === "rejected" || !traductionDistincte)) {
+                webIndisponible = true;
+                webRaison = "erreur";
+            }
+            await this.apiQuotaRepository.increment(CURRENTS_ADVANCED_QUOTA_KEY, period, appelsWeb);
         } else {
+            console.warn(`[recherche-avancee]: quota web du jour atteint (${usedGlobal}/${quotaWeb}), recherche web ignorée`);
             webIndisponible = true;
+            webRaison = "quota";
         }
 
         await this.apiQuotaRepository.increment(userQuotaKey, period, 1);
@@ -119,6 +133,7 @@ export default class RechercheAvanceeService {
                 })),
             },
             webIndisponible,
+            webRaison,
             traductionIndisponible,
         };
     }

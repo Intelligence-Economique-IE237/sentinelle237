@@ -250,6 +250,7 @@ export interface RechercheAvanceeResponse {
   corpus_interne: CorpusInterneResult[]
   web: Record<string, WebSearchResult[]>
   webIndisponible: boolean
+  webRaison?: "quota" | "erreur" | null
   traductionIndisponible?: boolean
 }
 

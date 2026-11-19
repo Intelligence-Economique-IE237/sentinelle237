@@ -3,7 +3,8 @@ import { Rss, Upload } from "lucide-react"
 import { toast } from "@/components/mira/toast-manager"
 import { useCachedFetch } from "@/hooks/useCachedFetch"
 import { getAllFluxAdmin, importOpml, updateFluxAdmin } from "@/lib/api/admin"
-import { FLUX_ZONES, type AdminFluxItem, type FluxZone } from "@/lib/api/types"
+import { getCategoriesFlux } from "@/lib/api/feeds"
+import { FLUX_ZONES, type AdminFluxItem, type CategorieFlux, type FluxZone } from "@/lib/api/types"
 import { ApiError } from "@/lib/api/client"
 import {
   MButton,
@@ -57,6 +58,8 @@ export function AdminFluxTab() {
     30 * 1000,
     [page]
   )
+  const { data: categoriesData } = useCachedFetch<CategorieFlux[]>("categories-flux", getCategoriesFlux, 30 * 60 * 1000)
+  const categories = categoriesData ?? []
   const items = result?.flux ?? []
   const total = result?.pagination.total ?? 0
   const totalPages = result?.pagination.totalPages ?? 1
@@ -89,6 +92,7 @@ export function AdminFluxTab() {
                 <th className={TH}>Nom</th>
                 <th className={TH}>Type</th>
                 <th className={cn(TH, "hidden sm:table-cell")}>Zone</th>
+                <th className={cn(TH, "hidden sm:table-cell")}>Catégorie</th>
                 <th className={cn(TH, "hidden md:table-cell")}>Dernière collecte</th>
                 <th className={cn(TH, "hidden lg:table-cell")}>Créé par</th>
               </tr>
@@ -98,14 +102,14 @@ export function AdminFluxTab() {
                 items.length === 0 &&
                 Array.from({ length: 6 }, (_, i) => (
                   <tr key={i}>
-                    <td colSpan={5} className="px-3 py-1.5">
+                    <td colSpan={6} className="px-3 py-1.5">
                       <MSkeleton className="h-12 rounded-2xl" />
                     </td>
                   </tr>
                 ))}
               {!loading && items.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-14 text-center text-sm text-m-muted">
+                  <td colSpan={6} className="py-14 text-center text-sm text-m-muted">
                     Aucun flux
                   </td>
                 </tr>
@@ -140,6 +144,9 @@ export function AdminFluxTab() {
                   </td>
                   <td className={cn(TD, "hidden sm:table-cell")}>
                     <ZoneSelect item={item} onUpdated={refresh} />
+                  </td>
+                  <td className={cn(TD, "hidden sm:table-cell")}>
+                    <CategorieSelect item={item} categories={categories} onUpdated={refresh} />
                   </td>
                   <td className={cn(TD, "hidden md:table-cell")}>
                     <span className="flex items-center gap-2 font-mono text-[12px] text-m-strong">
@@ -201,6 +208,60 @@ function ZoneSelect({ item, onUpdated }: { item: AdminFluxItem; onUpdated: () =>
       onChange={handleChange}
       options={ZONE_OPTIONS}
       className={cn("h-8 w-36 pr-2 pl-3 text-[13px]", saving && "opacity-60")}
+    />
+  )
+}
+
+const AUCUNE = "__aucune__"
+
+/** Sélecteur de catégorie en ligne : l'enregistrement part dès le choix. */
+function CategorieSelect({
+  item,
+  categories,
+  onUpdated,
+}: {
+  item: AdminFluxItem
+  categories: CategorieFlux[]
+  onUpdated: () => void
+}) {
+  const [categorieId, setCategorieId] = useState<string>(item.categorie_id ?? AUCUNE)
+  const [saving, setSaving] = useState(false)
+
+  const options = [
+    { value: AUCUNE, label: "Aucune" },
+    ...categories.map((c) => ({
+      value: c.id_categorie,
+      label: c.libelle,
+      icon: <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: c.couleur }} />,
+    })),
+  ]
+
+  async function handleChange(next: string) {
+    if (next === categorieId) return
+    const previous = categorieId
+    setCategorieId(next)
+    setSaving(true)
+    try {
+      await updateFluxAdmin(item.id_flux, { categorie_id: next === AUCUNE ? null : next })
+      const libelle = categories.find((c) => c.id_categorie === next)?.libelle ?? "aucune"
+      toast.add({ title: "Catégorie mise à jour", description: `${item.nom} → ${libelle}`, type: "success" })
+      onUpdated()
+    } catch (err) {
+      setCategorieId(previous)
+      const message = err instanceof ApiError ? err.message : "Impossible de modifier la catégorie"
+      toast.add({ title: "Erreur", description: message, type: "error" })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <MSelect
+      ariaLabel={`Catégorie de ${item.nom}`}
+      value={categorieId}
+      onChange={handleChange}
+      options={options}
+      className={cn("h-8 w-44 pr-2 pl-3 text-[13px]", saving && "opacity-60")}
     />
   )
 }

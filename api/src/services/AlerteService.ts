@@ -80,7 +80,7 @@ export default class AlerteService {
   private async searchWebNow(alerte: Parameters<AlerteService["matchWebResults"]>[0]) {
     const period = new Date().toISOString().slice(0, 10);
     const used = await this.apiQuotaRepository.getCount(CURRENTS_QUOTA_KEY, period);
-    if (Number(CURRENTS_API_DAILY_QUOTA) - used <= 0) return;
+    if ((Number(CURRENTS_API_DAILY_QUOTA) || 200) - used <= 0) return;
     await this.matchWebResults(alerte);
     await this.apiQuotaRepository.increment(CURRENTS_QUOTA_KEY, period, 1);
   }
@@ -244,7 +244,7 @@ export default class AlerteService {
   async runWebSearchBatch() {
     const period = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
     const used = await this.apiQuotaRepository.getCount(CURRENTS_QUOTA_KEY, period);
-    const remaining = Number(CURRENTS_API_DAILY_QUOTA) - used;
+    const remaining = (Number(CURRENTS_API_DAILY_QUOTA) || 200) - used;
 
     if (remaining <= 0) {
       return { total: 0, searched: 0, quotaExhausted: true };
