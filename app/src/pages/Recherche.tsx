@@ -267,7 +267,9 @@ export default function Recherche() {
 
           {result?.webIndisponible && !loading && (
             <div className="rounded-[22px] bg-m-sand px-5 py-3 text-sm text-m-strong">
-              Recherche web externe indisponible pour l’instant : seuls tes flux suivis sont affichés.
+              {result.webRaison === "quota"
+                ? "Quota quotidien de recherches web atteint : seuls tes flux suivis sont affichés. Réessaie demain."
+                : "Recherche web externe indisponible pour l’instant : seuls tes flux suivis sont affichés."}
             </div>
           )}
 

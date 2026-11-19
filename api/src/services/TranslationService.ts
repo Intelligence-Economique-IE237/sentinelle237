@@ -7,6 +7,12 @@ const LIBRETRANSLATE_QUOTA_KEY = "libretranslate";
 
 const apiQuotaRepository = new ApiQuotaRepository();
 
+// Accepte « mon-domaine.cm » comme « https://mon-domaine.cm/ » : sans schéma, fetch() refuse l'URL.
+function libreTranslateBaseUrl(): string {
+    const url = LIBRETRANSLATE_URL.trim().replace(/\/+$/, "");
+    return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
 type LibreTranslateResponse = {
     translatedText?: string;
     error?: string;
@@ -28,7 +34,7 @@ export class TranslationService {
 
         let res: Response;
         try {
-            res = await fetch(`${LIBRETRANSLATE_URL.replace(/\/+$/, "")}/translate`, {
+            res = await fetch(`${libreTranslateBaseUrl()}/translate`, {
                 method: "POST",
                 signal: AbortSignal.timeout(Number(LIBRETRANSLATE_TIMEOUT_MS) || 10000),
                 headers: { "Content-Type": "application/json" },

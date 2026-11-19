@@ -353,15 +353,9 @@ export default class FluxService {
 
   async unsubscribe(userId: string, id_flux: string) {
     await this.assertUserOwnsFlux(userId, id_flux);
-    const flux = await this.fluxRepository.getById(id_flux);
     await this.userFluxRepository.unsubscribe(userId, id_flux);
-
-    if (flux && !flux.is_suggestion) {
-      const remaining = await this.userFluxRepository.countSubscribers(id_flux);
-      if (remaining === 0) {
-        await this.fluxRepository.delete(id_flux);
-      }
-    }
+    // Le flux n'est plus supprimé quand son dernier abonné part : tous les flux
+    // enregistrés font partie du catalogue de suggestions.
   }
 
   async getSuggestions(userId: string, query: ListSuggestionsQuery) {
@@ -426,7 +420,17 @@ export default class FluxService {
   async updateByAdmin(id_flux: string, data: UpdateFluxByAdminInput) {
     const flux = await this.fluxRepository.getById(id_flux);
     if (!flux) throw new HttpException(404, "Flux introuvable");
-    return await this.fluxRepository.update(id_flux, { zone: data.zone });
+
+    const update: Prisma.FluxUpdateInput = {};
+    if (data.zone !== undefined) update.zone = data.zone;
+    if (data.categorie_id === null) {
+      update.categorie = { disconnect: true };
+    } else if (data.categorie_id !== undefined) {
+      const categorie = await this.categorieFluxRepository.getById(data.categorie_id);
+      if (!categorie) throw new HttpException(400, "Catégorie introuvable");
+      update.categorie = { connect: { id_categorie: categorie.id_categorie } };
+    }
+    return await this.fluxRepository.update(id_flux, update);
   }
 
   async setEpingle(userId: string, id_flux: string, epingle: boolean) {

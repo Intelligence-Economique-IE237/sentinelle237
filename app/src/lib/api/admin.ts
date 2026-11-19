@@ -43,7 +43,10 @@ export async function getAllFluxAdmin(params: AdminFluxListParams = {}): Promise
   return data
 }
 
-export async function updateFluxAdmin(id: string, payload: { zone: FluxZone }): Promise<AdminFluxItem> {
+export async function updateFluxAdmin(
+  id: string,
+  payload: { zone?: FluxZone; categorie_id?: string | null }
+): Promise<AdminFluxItem> {
   const { data } = await apiClient.patch<{ flux: AdminFluxItem }>(`/flux/admin/${id}`, payload)
   return data.flux
 }
