@@ -1,5 +1,10 @@
 import { db } from "../config/db";
-import type { Prisma, CategorieArticle } from "@prisma/client";
+import { Prisma, type Article, type CategorieArticle } from "@prisma/client";
+import { SQL_ACCENTS_FROM, SQL_ACCENTS_TO } from "../utils/keywordSearch";
+
+// Titre + description en minuscules et sans accents, pour une recherche
+// insensible aux accents sans dépendre de l'extension PostgreSQL unaccent.
+const NORMALIZED_TEXT = Prisma.sql`translate(replace(lower(coalesce(titre, '') || ' ' || coalesce(description, '')), 'œ', 'oe'), ${SQL_ACCENTS_FROM}, ${SQL_ACCENTS_TO})`;
 
 export default class ArticleRepository {
   private readonly db;
@@ -37,6 +42,29 @@ export default class ArticleRepository {
       orderBy: { date_publication: "desc" },
       take: 50,
     });
+  }
+
+  /**
+   * Recherche par mots-clés normalisés (voir utils/keywordSearch.ts).
+   * `termGroups` : une liste de requêtes alternatives (ex. requête originale et
+   * sa traduction) ; un article correspond si TOUS les termes d'au moins une
+   * requête apparaissent dans son titre ou sa description, dans n'importe quel ordre.
+   */
+  async searchByTermsInFlux(flux_ids: string[], termGroups: string[][], take = 50): Promise<Article[]> {
+    const groups = termGroups.filter((g) => g.length > 0);
+    if (flux_ids.length === 0 || groups.length === 0) return [];
+
+    const groupConditions = groups.map(
+      (terms) => Prisma.sql`(${Prisma.join(terms.map((t) => Prisma.sql`${NORMALIZED_TEXT} LIKE ${`%${t}%`}`), " AND ")})`
+    );
+
+    return await this.db.$queryRaw<Article[]>`
+      SELECT * FROM articles
+      WHERE flux_id IN (${Prisma.join(flux_ids)})
+        AND (${Prisma.join(groupConditions, " OR ")})
+      ORDER BY date_publication DESC NULLS LAST
+      LIMIT ${take}
+    `;
   }
 
   async searchByKeywordsInFlux(flux_ids: string[], keywords: string[]) {
