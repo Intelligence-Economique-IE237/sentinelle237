@@ -250,6 +250,7 @@ export interface RechercheAvanceeResponse {
   corpus_interne: CorpusInterneResult[]
   web: Record<string, WebSearchResult[]>
   webIndisponible: boolean
+  traductionIndisponible?: boolean
 }
 
 export interface ModeleRevue {

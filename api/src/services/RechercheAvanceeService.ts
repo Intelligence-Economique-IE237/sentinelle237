@@ -4,6 +4,7 @@ import ApiQuotaRepository from "../repositories/ApiQuotaRepository";
 import { TranslationService } from "./TranslationService";
 import { CurrentsApiService } from "./CurrentsApiService";
 import { HttpException } from "../utils/HttpExceptions";
+import { keywordTerms } from "../utils/keywordSearch";
 import type { RechercheAvanceeInput } from "../validations/RechercheAvanceeValidations";
 
 const { CURRENTS_ADVANCED_SEARCH_DAILY_QUOTA, RECHERCHE_AVANCEE_MAX_PAR_JOUR_PAR_USER } = process.env as {
@@ -46,16 +47,26 @@ export default class RechercheAvanceeService {
         }
 
 
-        const requeteTraduite = await this.translationService.translate(
-            input.requete,
-            input.langue_source,
-            input.langue_cible
-        );
+        // La traduction ne doit pas bloquer toute la recherche : si LibreTranslate
+        // est indisponible, on continue avec la requête d'origine seulement.
+        let requeteTraduite = input.requete;
+        let traductionIndisponible = false;
+        try {
+            requeteTraduite = await this.translationService.translate(
+                input.requete,
+                input.langue_source,
+                input.langue_cible
+            );
+        } catch (err) {
+            console.error("[recherche-avancee]: traduction indisponible:", err instanceof Error ? err.message : err);
+            traductionIndisponible = true;
+        }
+        const traductionDistincte = !traductionIndisponible && requeteTraduite.trim() !== input.requete.trim();
 
         const fluxIds = await this.userFluxRepository.getSubscribedFluxIds(userId);
-        const articlesInternes = await this.articleRepository.searchByKeywordsInFlux(fluxIds, [
-            input.requete,
-            requeteTraduite,
+        const articlesInternes = await this.articleRepository.searchByTermsInFlux(fluxIds, [
+            keywordTerms(input.requete),
+            ...(traductionDistincte ? [keywordTerms(requeteTraduite)] : []),
         ]);
 
         const usedGlobal = await this.apiQuotaRepository.getCount(CURRENTS_ADVANCED_QUOTA_KEY, period);
@@ -65,17 +76,20 @@ export default class RechercheAvanceeService {
         let resultatsCible: Awaited<ReturnType<CurrentsApiService["search"]>> = [];
         let webIndisponible = false;
 
-        if (remaining >= 2) {
+        const appelsWeb = traductionDistincte ? 2 : 1;
+        if (remaining >= appelsWeb) {
             try {
                 resultatsSource = await this.currentsApiService.search(input.requete, {
                     language: input.langue_source,
                     country: input.pays,
                 });
-                resultatsCible = await this.currentsApiService.search(requeteTraduite, {
-                    language: input.langue_cible,
-                    country: input.pays,
-                });
-                await this.apiQuotaRepository.increment(CURRENTS_ADVANCED_QUOTA_KEY, period, 2);
+                if (traductionDistincte) {
+                    resultatsCible = await this.currentsApiService.search(requeteTraduite, {
+                        language: input.langue_cible,
+                        country: input.pays,
+                    });
+                }
+                await this.apiQuotaRepository.increment(CURRENTS_ADVANCED_QUOTA_KEY, period, appelsWeb);
             } catch (err) {
                 console.error("[recherche-avancee]: échec recherche web:", err instanceof Error ? err.message : err);
                 webIndisponible = true;
@@ -105,6 +119,7 @@ export default class RechercheAvanceeService {
                 })),
             },
             webIndisponible,
+            traductionIndisponible,
         };
     }
 }

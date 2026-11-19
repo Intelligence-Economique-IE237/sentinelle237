@@ -249,9 +249,19 @@ export default function Recherche() {
             <div className="flex flex-wrap items-center gap-2 px-1 text-sm">
               <MPill tone="white" className="font-mono font-normal">{LANGUE_LABELS[from]}</MPill>
               <span className="font-medium">« {result.requete_originale} »</span>
-              <ArrowLeftRight className="size-3.5 text-m-muted" />
-              <MPill tone="lime" className="font-mono font-normal">{LANGUE_LABELS[to]}</MPill>
-              <span className="font-medium">« {result.requete_traduite} »</span>
+              {!result.traductionIndisponible && (
+                <>
+                  <ArrowLeftRight className="size-3.5 text-m-muted" />
+                  <MPill tone="lime" className="font-mono font-normal">{LANGUE_LABELS[to]}</MPill>
+                  <span className="font-medium">« {result.requete_traduite} »</span>
+                </>
+              )}
+            </div>
+          )}
+
+          {result?.traductionIndisponible && !loading && (
+            <div className="rounded-[22px] bg-m-sand px-5 py-3 text-sm text-m-strong">
+              Traduction indisponible pour l’instant : la recherche a été faite uniquement en {LANGUE_LABELS[from].toLowerCase()}.
             </div>
           )}
 

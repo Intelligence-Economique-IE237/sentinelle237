@@ -7,6 +7,7 @@ import ApiQuotaRepository from "../repositories/ApiQuotaRepository";
 import { CurrentsApiService } from "./CurrentsApiService";
 import { MailService } from "./MailService";
 import { HttpException } from "../utils/HttpExceptions";
+import { keywordTerms } from "../utils/keywordSearch";
 import type { CreateAlerteInput, UpdateAlerteInput, ListAlerteResultatsQuery } from "../validations/AlerteValidations";
 
 const { MAX_ALERTES_ACTIVES_PAR_USER, CURRENTS_API_DAILY_QUOTA, ALERTE_TOP_RESULTS_COUNT } = process.env as {
@@ -66,7 +67,22 @@ export default class AlerteService {
 
     await this.matchInternalArticles(alerte);
 
+    // Sans attendre la tournée nocturne : première recherche web tout de suite,
+    // en arrière-plan pour ne pas ralentir la réponse.
+    this.searchWebNow(alerte).catch((err) =>
+      console.error(`[alerte-web-search]: recherche initiale échouée pour "${alerte.mot_cle}":`, err instanceof Error ? err.message : err)
+    );
+
     return alerte;
+  }
+
+  /** Recherche web immédiate pour une alerte, si le quota quotidien Currents le permet. */
+  private async searchWebNow(alerte: Parameters<AlerteService["matchWebResults"]>[0]) {
+    const period = new Date().toISOString().slice(0, 10);
+    const used = await this.apiQuotaRepository.getCount(CURRENTS_QUOTA_KEY, period);
+    if (Number(CURRENTS_API_DAILY_QUOTA) - used <= 0) return;
+    await this.matchWebResults(alerte);
+    await this.apiQuotaRepository.increment(CURRENTS_QUOTA_KEY, period, 1);
   }
 
   async getAll(userId: string) {
@@ -132,7 +148,9 @@ export default class AlerteService {
     const subscribedFluxIds = await this.userFluxRepository.getSubscribedFluxIds(alerte.user_id);
     if (subscribedFluxIds.length === 0) return;
 
-    const articles = await this.articleRepository.searchByKeywordInFlux(subscribedFluxIds, alerte.mot_cle);
+    // Insensible aux accents et à l'ordre des mots : « economie camerounaise »
+    // retrouve aussi « L'économie du Cameroun »
+    const articles = await this.articleRepository.searchByTermsInFlux(subscribedFluxIds, [keywordTerms(alerte.mot_cle)]);
 
     const data: Prisma.AlerteResultatCreateManyInput[] = articles.map((a) => ({
       alerte_id: alerte.id_alerte,
