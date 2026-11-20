@@ -3,6 +3,7 @@ import type React from "react"
 import { useNavigate } from "react-router-dom"
 import { KeyRound, RefreshCw, ShieldCheck, ShieldOff } from "lucide-react"
 import { MainLayout } from "@/components/app/MainLayout"
+import { PushSettingsCard } from "@/components/app/PushSettingsCard"
 import { MAvatar, MButton, MCard, MCardHeader, MDialog, MField, MHero, MInput, MPill, MSkeleton } from "@/components/mira/mira"
 import { MOtpInput, MPasswordInput } from "@/components/mira/forms"
 import { toast } from "@/components/mira/toast-manager"
@@ -304,7 +305,9 @@ function AccountContent({ user }: { user: User }) {
           </div>
         </MCard>
 
-        <MCard tone="panel">
+        <PushSettingsCard />
+
+        <MCard tone="panel" className="lg:col-span-2">
           <MCardHeader title="Zone sensible" subtitle="La suppression du compte est définitive et efface toutes tes données." />
           <div className="mt-auto pt-8">
             <MButton variant="danger" onClick={() => setDeleteDialogOpen(true)}>

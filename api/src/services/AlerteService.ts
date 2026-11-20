@@ -8,6 +8,7 @@ import { CurrentsApiService } from "./CurrentsApiService";
 import { MailService } from "./MailService";
 import { HttpException } from "../utils/HttpExceptions";
 import { keywordTerms } from "../utils/keywordSearch";
+import NotificationService from "./NotificationService";
 import type { CreateAlerteInput, UpdateAlerteInput, ListAlerteResultatsQuery } from "../validations/AlerteValidations";
 
 const { MAX_ALERTES_ACTIVES_PAR_USER, CURRENTS_API_DAILY_QUOTA, ALERTE_TOP_RESULTS_COUNT } = process.env as {
@@ -20,6 +21,7 @@ const alerteResultatRepository = new AlerteResultatRepository();
 const articleRepository = new ArticleRepository();
 const userFluxRepository = new UserFluxRepository();
 const apiQuotaRepository = new ApiQuotaRepository();
+const notificationService = new NotificationService();
 const currentsApiService = new CurrentsApiService();
 const mailService = new MailService();
 
@@ -65,7 +67,7 @@ export default class AlerteService {
       user: { connect: { id_user: userId } },
     });
 
-    await this.matchInternalArticles(alerte);
+    await this.matchInternalArticles(alerte, { notifier: false });
 
     // Sans attendre la tournée nocturne : première recherche web tout de suite,
     // en arrière-plan pour ne pas ralentir la réponse.
@@ -81,7 +83,7 @@ export default class AlerteService {
     const period = new Date().toISOString().slice(0, 10);
     const used = await this.apiQuotaRepository.getCount(CURRENTS_QUOTA_KEY, period);
     if ((Number(CURRENTS_API_DAILY_QUOTA) || 200) - used <= 0) return;
-    await this.matchWebResults(alerte);
+    await this.matchWebResults(alerte, { notifier: false });
     await this.apiQuotaRepository.increment(CURRENTS_QUOTA_KEY, period, 1);
   }
 
@@ -144,7 +146,7 @@ export default class AlerteService {
     frequence: AlerteFrequence;
     nombre_resultats: AlerteNombreResultats;
     envoye_a: string;
-  }) {
+  }, options: { notifier?: boolean } = {}) {
     const subscribedFluxIds = await this.userFluxRepository.getSubscribedFluxIds(alerte.user_id);
     if (subscribedFluxIds.length === 0) return;
 
@@ -162,7 +164,10 @@ export default class AlerteService {
       date_publication: a.date_publication,
     }));
 
-    await this.alerteResultatRepository.createMany(data);
+    const created = await this.alerteResultatRepository.createMany(data);
+    if (options.notifier !== false) {
+      await notificationService.alerteNouveauxResultats(alerte, created?.count ?? 0, "flux");
+    }
 
     if (alerte.frequence === AlerteFrequence.immediat) {
       await this.dispatchDigest(alerte);
@@ -171,13 +176,14 @@ export default class AlerteService {
 
   async matchWebResults(alerte: {
     id_alerte: string;
+    user_id: string;
     mot_cle: string;
     langue: AlerteLangue;
     pays: string | null;
     frequence: AlerteFrequence;
     nombre_resultats: AlerteNombreResultats;
     envoye_a: string;
-  }) {
+  }, options: { notifier?: boolean } = {}) {
     const results = await this.currentsApiService.search(alerte.mot_cle, {
       language: langueToApiParam(alerte.langue),
       country: alerte.pays ?? undefined,
@@ -195,8 +201,11 @@ export default class AlerteService {
         date_publication: r.published ? new Date(r.published) : null,
       }));
 
-    await this.alerteResultatRepository.createMany(data);
+    const created = await this.alerteResultatRepository.createMany(data);
     await this.alerteRepository.update(alerte.id_alerte, { derniere_recherche_web: new Date() });
+    if (options.notifier !== false) {
+      await notificationService.alerteNouveauxResultats(alerte, created?.count ?? 0, "web");
+    }
 
     if (alerte.frequence === AlerteFrequence.immediat) {
       await this.dispatchDigest(alerte);

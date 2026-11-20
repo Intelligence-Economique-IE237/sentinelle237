@@ -43,6 +43,7 @@ model User {
   modelesPdf          ModelePdf[]
   revuesDePresse      RevueDePresse[]
   fluxEpingles        FluxEpingle[]
+  pushSubscriptions   PushSubscription[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -137,6 +138,24 @@ model FluxEpingle {
 
   @@unique([user_id, flux_id])
   @@map("flux_epingles")
+}
+
+// Abonnement aux notifications push (Web Push) : un par navigateur / appareil
+model PushSubscription {
+  id_subscription String   @id @default(uuid())
+  user_id         String
+  user            User     @relation(fields: [user_id], references: [id_user], onDelete: Cascade)
+  endpoint        String   @unique
+  p256dh          String
+  auth            String
+  user_agent      String?
+  alertes         Boolean  @default(true)
+  dossiers        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([user_id])
+  @@map("push_subscriptions")
 }
 
 enum CategorieArticle {

@@ -13,7 +13,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       injectRegister: false, // enregistré dans src/lib/pwa.ts
-      includeAssets: ["favicon.ico", "icons/apple-touch-icon.png", "icons/favicon-64.png"],
+      includeAssets: ["favicon.ico", "icons/apple-touch-icon.png", "icons/favicon-64.png", "icons/badge-96.png"],
       manifest: {
         id: "/",
         name: "Sentinelle237",
@@ -46,6 +46,8 @@ export default defineConfig({
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api\//],
         cleanupOutdatedCaches: true,
+        // Gestion des notifications push (affichage + clic)
+        importScripts: ["/push-sw.js"],
         runtimeCaching: [
           {
             // Images des articles (autres domaines) : affichage hors ligne des articles déjà vus

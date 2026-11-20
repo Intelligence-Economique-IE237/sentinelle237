@@ -31,6 +31,7 @@ import { toast } from "@/components/mira/toast-manager"
 import { useAuth } from "@/context/AuthContext"
 import { useCachedFetch } from "@/hooks/useCachedFetch"
 import { logoutUser } from "@/lib/api/auth"
+import { disablePushOnLogout } from "@/lib/push"
 import { getCategoriesFlux, getMyFluxes, toggleEpingle, unsubscribeFlux } from "@/lib/api/feeds"
 import type { CategorieFlux, Flux } from "@/lib/api/types"
 import { MAvatar, MBackground, MButton, MDialog } from "@/components/mira/mira"
@@ -189,6 +190,7 @@ function UserMenu() {
 
   async function handleLogout() {
     try {
+      await disablePushOnLogout()
       await logoutUser()
     } finally {
       navigate("/login")
