@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type React from "react"
-import { useLocation } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 import {
   ArrowLeft,
   Bell,
@@ -120,11 +120,20 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
 }
 
+/** Vue demandée dans l'URL (liens des notifications push) : /?vue=alertes, /?vue=dossiers&dossier=… */
+function viewFromSearch(search: string): SelectedView | null {
+  const vue = new URLSearchParams(search).get("vue")
+  if (vue === "alertes" || vue === "dossiers") return { type: vue }
+  return null
+}
+
 export default function Dashboard() {
   const location = useLocation()
+  const navigate = useNavigate()
   const [selected, setSelected] = useState<SelectedView>(
-    () => (location.state as { view?: SelectedView } | null)?.view ?? { type: "today" }
+    () => viewFromSearch(location.search) ?? (location.state as { view?: SelectedView } | null)?.view ?? { type: "today" }
   )
+  const pendingDossierId = useRef(new URLSearchParams(location.search).get("dossier"))
   const [openArticle, setOpenArticle] = useState<DisplayArticle | null>(null)
   const [noteDraft, setNoteDraft] = useState("")
   const [openNoteId, setOpenNoteId] = useState<string | null>(null)
@@ -306,6 +315,20 @@ export default function Dashboard() {
       .then(setDossierDetail)
       .catch(() => toast.add({ title: "Impossible de charger le dossier", type: "error" }))
   }
+
+  // Notification d'enquête : on ouvre le dossier concerné dès que la liste est chargée
+  useEffect(() => {
+    const id = pendingDossierId.current
+    if (!id || !dossiersData) return
+    pendingDossierId.current = null
+    const dossier = dossiersData.find((d) => d.id_dossier === id)
+    if (dossier) openDossier(dossier)
+  }, [dossiersData])
+
+  // Paramètres de notification consommés : on nettoie l'URL
+  useEffect(() => {
+    if (location.search && viewFromSearch(location.search)) navigate("/", { replace: true })
+  }, [location.search, navigate])
 
   const linkedAlerteIds = useMemo(() => new Set((dossierDetail?.alertes ?? []).map((a) => a.alerte_id)), [dossierDetail])
   const linkedFluxIds = useMemo(() => new Set((dossierDetail?.flux ?? []).map((f) => f.flux_id)), [dossierDetail])

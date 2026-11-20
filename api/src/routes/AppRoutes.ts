@@ -11,6 +11,7 @@ import { ArticleRoutes } from "./ArticleRoutes";
 import { RechercheAvanceeRoutes } from "./RechercheAvanceeRoutes";
 import { MLRoutes } from "./MLRoutes";
 import { RevueRoutes } from "./RevueRoutes";
+import { PushRoutes } from "./PushRoutes";
 import Auth from "../middlewares/Auth";
 
 const router = Router();
@@ -28,5 +29,6 @@ router.use("/articles", authMiddleware.verifyToken, ArticleRoutes);
 router.use("/recherche-avancee", authMiddleware.verifyToken, RechercheAvanceeRoutes);
 router.use("/ml", authMiddleware.verifyToken, MLRoutes);
 router.use("/revues", authMiddleware.verifyToken, RevueRoutes);
+router.use("/push", authMiddleware.verifyToken, PushRoutes);
 
 export { router as AppRoutes };

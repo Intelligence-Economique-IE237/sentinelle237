@@ -19,6 +19,7 @@ import type {
   ListMyFluxQuery,
   UpdateFluxByAdminInput,
 } from "../validations/FluxValidations";
+import NotificationService from "./NotificationService";
 
 const { FLUX_REFRESH_COOLDOWN_MINUTES } = process.env as { [key: string]: string };
 
@@ -30,6 +31,7 @@ const feedParserService = new FeedParserService();
 const telegramService = new TelegramService();
 const fluxEpingleRepository = new FluxEpingleRepository();
 const articleInteractionRepository = new ArticleInteractionRepository();
+const notificationService = new NotificationService();
 
 type CrawlData = {
   lien_rss: string;
@@ -128,7 +130,7 @@ export default class FluxService {
     }
   }
 
-  private async saveArticles(flux_id: string, items: ParsedFeed["items"]) {
+  private async saveArticles(flux_id: string, items: ParsedFeed["items"]): Promise<number> {
     const data: Prisma.ArticleCreateManyInput[] = items
         .filter((item) => !!item.link)
         .map((item) => ({
@@ -141,13 +143,15 @@ export default class FluxService {
           date_publication: safeDate(item.isoDate) ?? safeDate(item.pubDate),
         }));
 
-    if (data.length > 0) {
-      await this.articleRepository.createMany(data);
+    if (data.length === 0) return 0;
 
-      this.classifierArticlesEnArrierePlan(flux_id, data).catch((err) =>
-          console.error("[classification]: erreur non bloquante:", err)
-      );
-    }
+    // count = articles réellement nouveaux (les doublons sont ignorés)
+    const { count } = await this.articleRepository.createMany(data);
+
+    this.classifierArticlesEnArrierePlan(flux_id, data).catch((err) =>
+        console.error("[classification]: erreur non bloquante:", err)
+    );
+    return count;
   }
 
   private async classifierArticlesEnArrierePlan(flux_id: string, articlesData: Prisma.ArticleCreateManyInput[]) {
@@ -333,10 +337,14 @@ export default class FluxService {
       failed: [] as { id_flux: string; nom: string; error: string }[],
     };
 
+    const nouveauxParFlux = new Map<string, number>();
+
     for (const flux of dueFlux) {
       try {
         const items = await this.crawlExistingFlux(flux);
-        await this.saveArticles(flux.id_flux, items);
+        const nouveaux = await this.saveArticles(flux.id_flux, items);
+        // Première collecte d'un flux : tout l'historique arrive d'un coup, on ne notifie pas
+        if (nouveaux > 0 && flux.last_crawled_at) nouveauxParFlux.set(flux.id_flux, nouveaux);
         await this.fluxRepository.update(flux.id_flux, { last_crawled_at: new Date() });
         result.refreshed++;
       } catch (err) {
@@ -347,6 +355,9 @@ export default class FluxService {
         });
       }
     }
+
+    // Une notification par dossier d'enquête concerné, en fin de tournée
+    await notificationService.dossiersNouveauxArticles(nouveauxParFlux);
 
     return result;
   }
