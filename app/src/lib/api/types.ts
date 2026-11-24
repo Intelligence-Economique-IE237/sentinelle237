@@ -45,7 +45,7 @@ export interface PaginatedResponse<T> {
 }
 
 // --- Flux ---
-export type FluxType = "rss" | "x" | "youtube" | "telegram"
+export type FluxType = "rss" | "web" | "x" | "youtube" | "telegram"
 
 export interface Categorie {
   code: string

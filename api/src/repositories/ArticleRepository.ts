@@ -20,7 +20,7 @@ export default class ArticleRepository {
     const [articles, total] = await Promise.all([
       this.db.article.findMany({
         where: { flux_id },
-        orderBy: { date_publication: "desc" },
+        orderBy: { date_publication: { sort: "desc", nulls: "last" } },
         skip: params?.skip,
         take: params?.take,
       }),
@@ -39,7 +39,7 @@ export default class ArticleRepository {
           { description: { contains: keyword, mode: "insensitive" } },
         ],
       },
-      orderBy: { date_publication: "desc" },
+      orderBy: { date_publication: { sort: "desc", nulls: "last" } },
       take: 50,
     });
   }
@@ -78,7 +78,7 @@ export default class ArticleRepository {
           { description: { contains: kw, mode: "insensitive" as const } },
         ]),
       },
-      orderBy: { date_publication: "desc" },
+      orderBy: { date_publication: { sort: "desc", nulls: "last" } },
       take: 30,
     });
   }
@@ -103,7 +103,7 @@ export default class ArticleRepository {
     const [articles, total] = await Promise.all([
       this.db.article.findMany({
         where,
-        orderBy: { date_publication: "desc" },
+        orderBy: { date_publication: { sort: "desc", nulls: "last" } },
         skip: params.skip,
         take: params.take,
       }),
