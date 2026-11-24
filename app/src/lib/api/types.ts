@@ -9,6 +9,10 @@ export interface User {
   pays?: string
   ville?: string
   totp_enabled: boolean
+  /** Parcours d'accueil terminé (null = à faire) */
+  onboarding_termine_at?: string | null
+  /** Visite guidée terminée ou ignorée (null = à proposer) */
+  tutoriel_termine_at?: string | null
 }
 
 export interface RegisterPayload {

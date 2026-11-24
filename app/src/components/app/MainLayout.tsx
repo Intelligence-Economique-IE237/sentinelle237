@@ -25,6 +25,7 @@ import {
   ShieldCheck,
   User as UserIcon,
   X,
+  Compass,
 } from "lucide-react"
 import { MMenu, MMenuContent, MMenuItem, MMenuSeparator, MMenuTrigger } from "@/components/mira/menu"
 import { toast } from "@/components/mira/toast-manager"
@@ -32,6 +33,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useCachedFetch } from "@/hooks/useCachedFetch"
 import { logoutUser } from "@/lib/api/auth"
 import { disablePushOnLogout } from "@/lib/push"
+import { useGuide } from "@/components/guide/guide-context"
 import { getCategoriesFlux, getMyFluxes, toggleEpingle, unsubscribeFlux } from "@/lib/api/feeds"
 import type { CategorieFlux, Flux } from "@/lib/api/types"
 import { MAvatar, MBackground, MButton, MDialog } from "@/components/mira/mira"
@@ -61,6 +63,10 @@ export function MainLayout({ active, onSelectView, counts, children }: MainLayou
   const go = useMainNavigation(onSelectView)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const navigate = useNavigate()
+  const { registerDrawer } = useGuide()
+
+  // La visite guidée ouvre le tiroir mobile pour montrer la barre latérale
+  useEffect(() => registerDrawer(setDrawerOpen), [registerDrawer])
 
   // Raccourci clavier : Ctrl/⌘ + K ouvre la recherche multilingue
   useEffect(() => {
@@ -154,6 +160,7 @@ function MainHeader({ title, onOpenMenu }: { title: string; onOpenMenu: () => vo
       <button
         type="button"
         onClick={() => navigate("/recherche")}
+        data-tour="header-search"
         className="flex h-11 shrink-0 cursor-pointer items-center gap-2.5 rounded-full bg-m-surface pr-2 pl-4 text-sm text-m-muted transition-colors hover:text-m-ink max-sm:size-11 max-sm:justify-center max-sm:p-0"
         aria-label="Recherche multilingue"
       >
@@ -179,6 +186,7 @@ function OfflineBanner() {
 
 function UserMenu() {
   const { user } = useAuth()
+  const { startTour } = useGuide()
   const navigate = useNavigate()
   const install = useInstallAvailability()
   const [iosHelpOpen, setIosHelpOpen] = useState(false)
@@ -205,6 +213,7 @@ function UserMenu() {
           <button
             type="button"
             aria-label="Menu du compte"
+            data-tour="user-menu"
             className="flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-full bg-m-ink pr-1.5 pl-1.5 text-white sm:pr-4"
           >
             <MAvatar name={user?.pseudo} className="ring-m-ink" />
@@ -220,6 +229,9 @@ function UserMenu() {
         <MMenuSeparator />
         <MMenuItem onClick={() => navigate("/account")}>
           <UserIcon /> Mon compte
+        </MMenuItem>
+        <MMenuItem onClick={startTour}>
+          <Compass /> Visite guidée
         </MMenuItem>
         {user?.role === "admin" && (
           <MMenuItem onClick={() => navigate("/admin")}>
@@ -283,17 +295,20 @@ function NavItem({
   label,
   count,
   onClick,
+  tourId,
 }: {
   active: boolean
   icon: typeof Inbox
   label: string
   count?: number
   onClick: () => void
+  tourId?: string
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      data-tour={tourId}
       aria-current={active ? "page" : undefined}
       className={cn(
         "flex h-10 w-full cursor-pointer items-center gap-3 rounded-full px-3.5 text-left text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-m-lime",
@@ -411,22 +426,26 @@ function SidebarPanel({
             label={item.label}
             count={item.countKey ? counts?.[item.countKey] : undefined}
             onClick={() => onNavigate(item.view)}
+            tourId={`nav-${item.view.type}`}
           />
         ))}
         <div className="mx-3.5 my-2 h-px bg-m-surface-4" />
-        {SECONDARY_NAV.map((item) => (
-          <NavItem
-            key={item.view.type}
-            active={isSameView(active, item.view)}
-            icon={item.icon}
-            label={item.label}
-            onClick={() => onNavigate(item.view)}
-          />
-        ))}
+        <div data-tour="nav-secondary" className="flex flex-col gap-0.5">
+          {SECONDARY_NAV.map((item) => (
+            <NavItem
+              key={item.view.type}
+              active={isSameView(active, item.view)}
+              icon={item.icon}
+              label={item.label}
+              onClick={() => onNavigate(item.view)}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Flux suivis */}
-      <div className="mt-4 flex shrink-0 items-center justify-between px-5">
+      <div data-tour="flux-list" className="mx-1 mt-2 shrink-0 rounded-[22px] px-2 pt-2 pb-1">
+      <div className="flex items-center justify-between px-2">
         <button
           type="button"
           onClick={() => onNavigate({ type: "gestion" })}
@@ -442,12 +461,13 @@ function SidebarPanel({
           type="button"
           onClick={() => setAddOpen(true)}
           aria-label="Ajouter un flux"
+          data-tour="flux-add"
           className="flex size-7 cursor-pointer items-center justify-center rounded-full bg-m-lime text-m-ink transition hover:brightness-95"
         >
           <Plus className="size-4" />
         </button>
       </div>
-      <div className="relative mx-3 mt-2.5 shrink-0">
+      <div className="relative mt-2.5">
         <Search className="pointer-events-none absolute top-1/2 left-3.5 size-3.5 -translate-y-1/2 text-m-muted" />
         <input
           aria-label="Filtrer les flux"
@@ -456,6 +476,7 @@ function SidebarPanel({
           placeholder="Filtrer les flux…"
           className="h-9 w-full rounded-full bg-m-surface-2 pr-3 pl-9 text-[13px] outline-none placeholder:text-m-muted focus-visible:ring-2 focus-visible:ring-m-lime"
         />
+      </div>
       </div>
 
       <div className="m-fade-top mt-1 min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pt-3 pb-4">

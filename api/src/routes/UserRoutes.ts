@@ -2,7 +2,7 @@ import { Router } from "express";
 import { Role } from "@prisma/client";
 import UserController from "../controllers/UserController";
 import ValidateRequest from "../middlewares/ValidateRequest";
-import { updateProfileSchema, updateUserByAdminSchema } from "../validations/UserValidations";
+import { updateOnboardingSchema, updateProfileSchema, updateUserByAdminSchema } from "../validations/UserValidations";
 import Auth from "../middlewares/Auth";
 
 const userController = new UserController();
@@ -16,6 +16,11 @@ router
         "/me",
         ValidateRequest(updateProfileSchema),
         userController.updateMe.bind(userController)
+    )
+    .patch(
+        "/me/onboarding",
+        ValidateRequest(updateOnboardingSchema),
+        userController.updateOnboarding.bind(userController)
     )
     .delete("/me", userController.deleteMe.bind(userController));
 

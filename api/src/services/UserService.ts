@@ -6,6 +6,7 @@ import type {
     UpdateProfileInput,
     UpdateUserByAdminInput,
     ListUsersQuery,
+    UpdateOnboardingInput,
 } from "../validations/UserValidations";
 
 const userRepository = new UserRepository();
@@ -80,6 +81,14 @@ export default class UserService {
         }
 
         return await this.userRepository.update(id_user, updateData);
+    }
+
+    async updateOnboarding(id_user: string, data: UpdateOnboardingInput) {
+        await this.getById(id_user);
+        const update: Prisma.UserUpdateInput = {};
+        if (data.onboarding !== undefined) update.onboarding_termine_at = data.onboarding ? new Date() : null;
+        if (data.tutoriel !== undefined) update.tutoriel_termine_at = data.tutoriel ? new Date() : null;
+        return await this.userRepository.update(id_user, update);
     }
 
     async updateByAdmin(id_user: string, data: UpdateUserByAdminInput) {

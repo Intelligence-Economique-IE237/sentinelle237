@@ -29,6 +29,12 @@ export async function updateMe(payload: UpdateMePayload): Promise<User> {
   return unwrapUser(data)
 }
 
+/** Marque le parcours d'accueil et/ou la visite guidée comme faits (true) ou à refaire (false). */
+export async function updateOnboarding(payload: { onboarding?: boolean; tutoriel?: boolean }): Promise<User> {
+  const { data } = await apiClient.patch("/users/me/onboarding", payload)
+  return unwrapUser(data)
+}
+
 export async function deleteMe(): Promise<void> {
   await apiClient.delete("/users/me")
 }

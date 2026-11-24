@@ -54,6 +54,17 @@ export const updateProfileSchema = z
     });
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 
+// Parcours d'accueil / visite guidée : true = terminé, false = à refaire
+export const updateOnboardingSchema = z
+    .object({
+        onboarding: z.boolean().optional(),
+        tutoriel: z.boolean().optional(),
+    })
+    .refine((d) => d.onboarding !== undefined || d.tutoriel !== undefined, {
+        message: "Indique onboarding et/ou tutoriel",
+    });
+export type UpdateOnboardingInput = z.infer<typeof updateOnboardingSchema>;
+
 export const updateUserByAdminSchema = z.object({
     pseudo: z.string().min(3).optional(),
     pays: z.string().min(1).optional(),
