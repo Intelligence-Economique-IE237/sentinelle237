@@ -9,12 +9,14 @@ import Recherche from './pages/Recherche'
 import UserDashboardView from './components/UserDashboardView'
 import { AuthProvider } from './context/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import { GuideProvider } from './components/guide/GuideProvider'
 
 import './App.css'
 
 function App() {
     return (
         <AuthProvider>
+          <GuideProvider>
             <Routes>
                 <Route
                     path="/"
@@ -75,6 +77,7 @@ function App() {
                     }
                 />
             </Routes>
+          </GuideProvider>
         </AuthProvider>
     )
 }

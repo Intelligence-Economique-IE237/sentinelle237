@@ -60,6 +60,16 @@ export default class UserController {
         }
     }
 
+    async updateOnboarding(req: AuthRequest, res: Response, next: NextFunction) {
+        try {
+            if (!req.user) throw new HttpException(401, "Unauthorized");
+            const user = await this.userService.updateOnboarding(req.user.id_user, req.body);
+            res.status(200).json({ user: this.userService.sanitize(user) });
+        } catch (err) {
+            next(err);
+        }
+    }
+
     async deleteMe(req: AuthRequest, res: Response, next: NextFunction) {
         try {
             if (!req.user) throw new HttpException(401, "Unauthorized");

@@ -653,6 +653,7 @@ export default function Dashboard() {
             action={
               <MButton
                 size="sm"
+                data-tour="alertes-new"
                 onClick={() => {
                   setEditingAlerte(null)
                   setAlertFormOpen(true)
@@ -761,6 +762,7 @@ export default function Dashboard() {
               action={
                 <MButton
                   size="sm"
+                  data-tour="dossiers-new"
                   onClick={() => {
                     setEditingDossier(null)
                     setDossierFormOpen(true)

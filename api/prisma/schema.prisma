@@ -33,6 +33,9 @@ model User {
   token_reset_password            String?
   token_reset_password_expiration DateTime?
   offre                           Offre     @default(community)
+  // Parcours d'accueil et visite guidée (null = pas encore fait)
+  onboarding_termine_at           DateTime?
+  tutoriel_termine_at             DateTime?
 
   totpRecoveryCodes   TotpRecoveryCode[]
   fluxCrees           Flux[]               @relation("FluxCreator")
