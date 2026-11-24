@@ -7,6 +7,7 @@ import FluxEpingleRepository from "../repositories/FluxEpingleRepository";
 import ArticleInteractionRepository from "../repositories/ArticleInteractionRepository";
 import { FeedParserService, type ParsedFeed } from "./FeedParserService";
 import { TelegramService } from "./TelegramService";
+import { WebPageFeedService } from "./WebPageFeedService";
 import { mlInferenceService } from "./MLInferenceService";
 import { genererResumeExtractif } from "../utils/resume";
 import { extractText, safeDate } from "../utils/sanitize";
@@ -29,11 +30,14 @@ const userFluxRepository = new UserFluxRepository();
 const categorieFluxRepository = new CategorieFluxRepository();
 const feedParserService = new FeedParserService();
 const telegramService = new TelegramService();
+const webPageFeedService = new WebPageFeedService();
 const fluxEpingleRepository = new FluxEpingleRepository();
 const articleInteractionRepository = new ArticleInteractionRepository();
 const notificationService = new NotificationService();
 
 type CrawlData = {
+  /** Type réellement retenu (un site « RSS » sans flux devient un flux « web ») */
+  type?: FluxType;
   lien_rss: string;
   nom?: string;
   url_site?: string | null;
@@ -79,7 +83,21 @@ export default class FluxService {
   private async crawlByType(input: CreateFluxInput): Promise<CrawlData> {
     switch (input.type) {
       case FluxType.rss: {
-        const feedUrl = await this.feedParserService.discoverFeedUrl(this.normalizeUrl(input.identifiant));
+        const url = this.normalizeUrl(input.identifiant);
+        let feedUrl: string;
+        try {
+          feedUrl = await this.feedParserService.discoverFeedUrl(url);
+        } catch (rssError) {
+          // Pas de flux RSS (cas fréquent des sites gouvernementaux) : on suit la page elle-même
+          try {
+            return await this.crawlWebPage(url);
+          } catch (webError) {
+            console.warn(`[flux]: ni RSS ni articles lisibles pour ${url}:`, webError instanceof Error ? webError.message : webError);
+            throw rssError instanceof HttpException && webError instanceof HttpException
+              ? new HttpException(422, `Aucun flux RSS sur ce site, et la page n'a pas pu être lue : ${webError.message}`)
+              : rssError;
+          }
+        }
         const parsed = await this.feedParserService.parseFeed(feedUrl);
         return {
           lien_rss: feedUrl,
@@ -89,6 +107,9 @@ export default class FluxService {
           items: parsed.items,
         };
       }
+
+      case FluxType.web:
+        return await this.crawlWebPage(this.normalizeUrl(input.identifiant));
 
       case FluxType.youtube: {
         const feedUrl = await this.feedParserService.resolveYoutubeFeedUrl(this.normalizeUrl(input.identifiant));
@@ -128,6 +149,18 @@ export default class FluxService {
       default:
         throw new HttpException(400, "Type de flux non supporté");
     }
+  }
+
+  private async crawlWebPage(url: string): Promise<CrawlData> {
+    const page = await webPageFeedService.parsePage(url);
+    return {
+      type: FluxType.web,
+      lien_rss: page.finalUrl,
+      nom: page.title,
+      url_site: page.link ?? null,
+      logo: page.image?.url ?? null,
+      items: page.items,
+    };
   }
 
   private async saveArticles(flux_id: string, items: ParsedFeed["items"]): Promise<number> {
@@ -190,6 +223,12 @@ export default class FluxService {
       const parsed = await this.feedParserService.parseFeed(feedUrl);
       return parsed.items;
     }
+    if (flux.type === FluxType.web) {
+      const page = await webPageFeedService.parsePage(flux.lien_rss);
+      // Article sans date sur le site : on retient le moment où Sentinelle l'a vu apparaître
+      const now = new Date().toISOString();
+      return page.items.map((item) => (item.isoDate ? item : { ...item, isoDate: now }));
+    }
     const parsed = await this.feedParserService.parseFeed(flux.lien_rss);
     return parsed.items;
   }
@@ -220,7 +259,7 @@ export default class FluxService {
       url_site: crawlData.url_site ?? null,
       lien_rss: crawlData.lien_rss,
       logo: crawlData.logo ?? null,
-      type: input.type,
+      type: crawlData.type ?? input.type,
       categorie: categorieId ? { connect: { id_categorie: categorieId } } : undefined,
       last_crawled_at: new Date(),
       createdByUser: { connect: { id_user: userId } },

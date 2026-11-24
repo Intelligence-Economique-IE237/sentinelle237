@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
 
 const TYPE_OPTIONS: { value: FluxType; label: string }[] = [
   { value: "rss", label: "RSS / site web" },
+  { value: "web", label: "Page web sans RSS (site public…)" },
   { value: "x", label: "X (Twitter)" },
   { value: "youtube", label: "YouTube" },
   { value: "telegram", label: "Telegram" },
@@ -17,6 +18,7 @@ const TYPE_OPTIONS: { value: FluxType; label: string }[] = [
 
 const IDENTIFIANT: Record<FluxType, { label: string; placeholder: string }> = {
   rss: { label: "Domaine ou URL du flux", placeholder: "lemonde.fr" },
+  web: { label: "Adresse de la page Actualités ou Communiqués", placeholder: "https://www.minfi.gov.cm/actualites" },
   x: { label: "Nom d’utilisateur (sans @)", placeholder: "elonmusk" },
   youtube: { label: "URL de la chaîne", placeholder: "https://youtube.com/@chaine" },
   telegram: { label: "Nom du canal (sans @)", placeholder: "nomducanal" },
@@ -80,9 +82,13 @@ export function AddFluxDialog({
         categorie: form.categorie || undefined,
       })
       await onAdded()
+      const pageWeb = res.flux.type === "web"
       toast.add({
         title: res.alreadyExisted ? "Abonné au flux existant" : "Flux ajouté",
-        description: res.flux.nom,
+        description:
+          pageWeb && form.type !== "web"
+            ? `${res.flux.nom} n’a pas de flux RSS : Sentinelle lira directement sa page d’actualités.`
+            : res.flux.nom,
         type: "success",
       })
       setForm(EMPTY_FORM)
@@ -95,7 +101,7 @@ export function AddFluxDialog({
             : err.status === 409
               ? "Tu es déjà abonné à ce flux"
               : err.status === 422
-                ? "Ce site est inaccessible, bloque les robots, ou aucun flux n’a été détecté"
+                ? err.message || "Ce site est inaccessible, bloque les robots, ou aucun article n’a été détecté"
                 : err.message
           : "Impossible de contacter le serveur"
       toast.add({ title: "Erreur", description: message, type: "error" })
@@ -146,6 +152,13 @@ export function AddFluxDialog({
               className="w-full rounded-2xl"
             />
           </MField>
+          {(form.type === "web" || form.type === "rss") && (
+            <p className="-mt-1 rounded-[18px] bg-m-surface-2 px-4 py-2.5 text-[12px] leading-[1.5] text-m-soft">
+              {form.type === "web"
+                ? "Pour les sites sans flux RSS : colle l’adresse de la page qui liste les actualités ou communiqués. Sentinelle la relit régulièrement et en extrait les nouveaux articles."
+                : "Pas de flux RSS sur le site ? Pas grave : Sentinelle lira directement sa page."}
+            </p>
+          )}
           <MField label={IDENTIFIANT[form.type].label} htmlFor="flux-identifiant">
             <MInput
               id="flux-identifiant"

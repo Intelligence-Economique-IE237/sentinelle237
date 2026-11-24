@@ -70,6 +70,8 @@ enum FluxType {
   x
   youtube
   telegram
+  // Site sans flux RSS : la page d'actualités est lue et analysée directement
+  web
 }
 
 enum Zone {
